@@ -16,11 +16,10 @@ import (
 )
 
 // DefaultConfig returns a Config with sensible defaults.
-func DefaultConfig(gatewayHandlers map[gateway.EventType]GatewayEventHandler, httpHandler HTTPServerEventHandler) *Config {
+func DefaultConfig() *Config {
 	return &Config{
-		Logger:                 log.Default(),
-		EventManagerConfigOpts: []EventManagerConfigOpt{WithGatewayHandlers(gatewayHandlers), WithHTTPServerHandler(httpHandler)},
-		MemberChunkingFilter:   MemberChunkingFilterNone,
+		Logger:               log.Default(),
+		MemberChunkingFilter: MemberChunkingFilterNone,
 	}
 }
 
@@ -115,12 +114,12 @@ func WithEventListeners(eventListeners ...EventListener) ConfigOpt {
 }
 
 // WithEventListenerFunc adds the given func(e E) to the default EventManager.
-func WithEventListenerFunc[E Event](f func(e E)) ConfigOpt {
+func WithEventListenerFunc[E gateway.Event](f func(e E)) ConfigOpt {
 	return WithEventListeners(NewListenerFunc(f))
 }
 
 // WithEventListenerChan adds the given chan<- E to the default EventManager.
-func WithEventListenerChan[E Event](c chan<- E) ConfigOpt {
+func WithEventListenerChan[E gateway.Event](c chan<- E) ConfigOpt {
 	return WithEventListeners(NewListenerChan(c))
 }
 
@@ -209,8 +208,7 @@ func WithMemberChunkingFilter(memberChunkingFilter MemberChunkingFilter) ConfigO
 	}
 }
 
-// BuildClient creates a new Client instance with the given token, Config, gateway handlers, http handlers os, name, github & version.
-func BuildClient(token string, config Config, gatewayEventHandlerFunc func(client Client) gateway.EventHandlerFunc, httpServerEventHandlerFunc func(client Client) httpserver.EventHandlerFunc, os string, name string, github string, version string) (Client, error) {
+func buildClient(token string, config Config, os string, name string, github string, version string) (Client, error) {
 	if token == "" {
 		return nil, discord.ErrNoBotToken
 	}
@@ -271,7 +269,7 @@ func BuildClient(token string, config Config, gatewayEventHandlerFunc func(clien
 			},
 		}, config.GatewayConfigOpts...)
 
-		config.Gateway = gateway.New(token, gatewayEventHandlerFunc(client), nil, config.GatewayConfigOpts...)
+		config.Gateway = gateway.New(token, client.HandleEvent, nil, config.GatewayConfigOpts...)
 	}
 	client.gateway = config.Gateway
 
@@ -306,7 +304,7 @@ func BuildClient(token string, config Config, gatewayEventHandlerFunc func(clien
 			},
 		}, config.ShardManagerConfigOpts...)
 
-		config.ShardManager = sharding.New(token, gatewayEventHandlerFunc(client), config.ShardManagerConfigOpts...)
+		config.ShardManager = sharding.New(token, client.HandleEvent, config.ShardManagerConfigOpts...)
 	}
 	client.shardManager = config.ShardManager
 
@@ -315,7 +313,7 @@ func BuildClient(token string, config Config, gatewayEventHandlerFunc func(clien
 			httpserver.WithLogger(client.logger),
 		}, config.HTTPServerConfigOpts...)
 
-		config.HTTPServer = httpserver.New(config.PublicKey, httpServerEventHandlerFunc(client), config.HTTPServerConfigOpts...)
+		config.HTTPServer = httpserver.New(config.PublicKey, client.HandleEvent, config.HTTPServerConfigOpts...)
 	}
 	client.httpServer = config.HTTPServer
 

@@ -3,6 +3,7 @@ package cache
 import (
 	"sync"
 
+	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/snowflake/v2"
 
 	"github.com/disgoorg/disgo/discord"
@@ -687,6 +688,8 @@ type Caches interface {
 	EmojiCache
 	StickerCache
 
+	HandleEvent(event gateway.Event)
+
 	// CacheFlags returns the current configured FLags of the caches.
 	CacheFlags() Flags
 
@@ -789,6 +792,109 @@ type cachesImpl struct {
 	EmojiCache
 	StickerCache
 	SelfUserCache
+}
+
+func (c *cachesImpl) HandleEvent(event gateway.Event) {
+	switch e := event.(type) {
+	case gateway.EventReady:
+		c.SetSelfUser(e.User)
+
+		for _, guild := range e.Guilds {
+			c.SetGuildUnready(guild.ID, true)
+		}
+
+	case gateway.EventMessageCreate:
+		if channel, ok := c.GuildMessageChannel(e.ChannelID); ok {
+			c.AddChannel(discord.ApplyLastMessageIDToChannel(channel, e.ID))
+		}
+		if channel, ok := c.GuildThread(e.ChannelID); ok {
+			channel.TotalMessageSent++
+			channel.MessageCount++
+			c.AddChannel(channel)
+		}
+		c.AddMessage(e.Message)
+	case gateway.EventMessageUpdate:
+		oldMessage, _ := c.Message(e.ChannelID, e.ID)
+		e.OldMessage = oldMessage
+		c.AddMessage(e.Message)
+	case gateway.EventMessageDelete:
+		oldMessage, _ := c.Message(e.ChannelID, e.ID)
+		e.OldMessage = oldMessage
+		if channel, ok := c.GuildThread(e.ChannelID); ok {
+			if channel.MessageCount > 0 {
+				channel.MessageCount--
+			}
+			c.AddChannel(channel)
+		}
+		c.RemoveMessage(e.ChannelID, e.ID)
+	case gateway.EventMessageDeleteBulk:
+		if channel, ok := c.GuildThread(e.ChannelID); ok {
+			if channel.MessageCount > 0 {
+				channel.MessageCount--
+			}
+			c.AddChannel(channel)
+		}
+		for _, id := range e.IDs {
+			oldMessage, _ := c.Message(e.ChannelID, id)
+			e.OldMessages = append(e.OldMessages, oldMessage)
+			c.RemoveMessage(e.ChannelID, id)
+		}
+
+	case gateway.EventGuildCreate:
+		c.AddGuild(e.Guild)
+	case gateway.EventGuildUpdate:
+		c.AddGuild(e.Guild)
+	case gateway.EventGuildDelete:
+		c.RemoveGuild(e.ID)
+
+	case gateway.EventStageInstanceCreate:
+		c.AddStageInstance(e.StageInstance)
+	case gateway.EventStageInstanceUpdate:
+		oldStageInstance, _ := c.StageInstance(e.GuildID, e.ID)
+		e.OldStageInstance = oldStageInstance
+		c.AddStageInstance(e.StageInstance)
+	case gateway.EventStageInstanceDelete:
+		c.RemoveStageInstance(e.GuildID, e.ID)
+
+	case gateway.EventThreadCreate:
+		c.AddChannel(e.GuildThread)
+		c.AddThreadMember(e.ThreadMember)
+	case gateway.EventThreadUpdate:
+		oldThread, _ := c.GuildThread(e.ID())
+		e.OldGuildThread = oldThread
+		c.AddChannel(e.GuildThread)
+	case gateway.EventThreadDelete:
+		var thread discord.GuildThread
+		if channel, ok := c.RemoveChannel(e.ID); ok {
+			thread, _ = channel.(discord.GuildThread)
+		}
+		e.OldGuildThread = thread
+		c.RemoveThreadMembersByThreadID(e.ID)
+	case gateway.EventThreadListSync:
+		for _, thread := range e.Threads {
+			c.AddChannel(thread)
+		}
+	case gateway.EventThreadMembersUpdate:
+		if thread, ok := c.GuildThread(e.ID); ok {
+			thread.MemberCount = e.MemberCount
+			c.AddChannel(thread)
+		}
+		for _, addedMember := range e.AddedMembers {
+			addedMember.Member.GuildID = e.ID
+			c.AddThreadMember(addedMember.ThreadMember)
+			c.AddMember(addedMember.Member)
+
+			if addedMember.Presence != nil {
+				c.AddPresence(*addedMember.Presence)
+			}
+		}
+
+		for _, removedMemberID := range e.RemovedMemberIDs {
+			if threadMember, ok := c.RemoveThreadMember(e.ID, removedMemberID); ok {
+				e.RemovedMembers = append(e.RemovedMembers, threadMember)
+			}
+		}
+	}
 }
 
 func (c *cachesImpl) CacheFlags() Flags {

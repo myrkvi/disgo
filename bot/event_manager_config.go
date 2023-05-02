@@ -1,9 +1,8 @@
 package bot
 
 import (
-	"github.com/disgoorg/log"
-
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/log"
 )
 
 // DefaultEventManagerConfig returns a new EventManagerConfig with all default values.
@@ -15,12 +14,8 @@ func DefaultEventManagerConfig() *EventManagerConfig {
 
 // EventManagerConfig can be used to configure the EventManager.
 type EventManagerConfig struct {
-	Logger             log.Logger
-	EventListeners     []EventListener
-	AsyncEventsEnabled bool
-
-	GatewayHandlers   map[gateway.EventType]GatewayEventHandler
-	HTTPServerHandler HTTPServerEventHandler
+	Logger         log.Logger
+	EventListeners []EventListener
 }
 
 // EventManagerConfigOpt is a functional option for configuring an EventManager.
@@ -48,32 +43,11 @@ func WithListeners(listeners ...EventListener) EventManagerConfigOpt {
 }
 
 // WithListenerFunc adds the given func(e E) to the EventManagerConfig.
-func WithListenerFunc[E Event](f func(e E)) EventManagerConfigOpt {
+func WithListenerFunc[E gateway.Event](f func(e E)) EventManagerConfigOpt {
 	return WithListeners(NewListenerFunc(f))
 }
 
 // WithListenerChan adds the given chan<- E to the EventManagerConfig.
-func WithListenerChan[E Event](c chan<- E) EventManagerConfigOpt {
+func WithListenerChan[E gateway.Event](c chan<- E) EventManagerConfigOpt {
 	return WithListeners(NewListenerChan(c))
-}
-
-// WithAsyncEventsEnabled enables/disables the async events.
-func WithAsyncEventsEnabled() EventManagerConfigOpt {
-	return func(config *EventManagerConfig) {
-		config.AsyncEventsEnabled = true
-	}
-}
-
-// WithGatewayHandlers overrides the default GatewayEventHandler(s) in the EventManagerConfig.
-func WithGatewayHandlers(handlers map[gateway.EventType]GatewayEventHandler) EventManagerConfigOpt {
-	return func(config *EventManagerConfig) {
-		config.GatewayHandlers = handlers
-	}
-}
-
-// WithHTTPServerHandler overrides the given HTTPServerEventHandler in the EventManagerConfig.
-func WithHTTPServerHandler(handler HTTPServerEventHandler) EventManagerConfigOpt {
-	return func(config *EventManagerConfig) {
-		config.HTTPServerHandler = handler
-	}
 }

@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 
+	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/log"
 	"github.com/disgoorg/snowflake/v2"
 
@@ -14,6 +15,20 @@ import (
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/disgoorg/disgo/voice"
 )
+
+// New creates a new bot.Client with the provided token & bot.ConfigOpt(s)
+func New(token string, opts ...ConfigOpt) (Client, error) {
+	config := DefaultConfig()
+	config.Apply(opts)
+
+	return buildClient(token,
+		*config,
+		disgo.OS,
+		disgo.Name,
+		disgo.GitHub,
+		disgo.Version,
+	)
+}
 
 var _ Client = (*clientImpl)(nil)
 
@@ -41,6 +56,8 @@ type Client interface {
 
 	// Rest returns the rest.Rest used by the Client.
 	Rest() rest.Rest
+
+	HandleEvent(event gateway.Event)
 
 	// AddEventListeners adds one or more EventListener(s) to the EventManager.
 	AddEventListeners(listeners ...EventListener)
@@ -177,6 +194,10 @@ func (c *clientImpl) Caches() cache.Caches {
 
 func (c *clientImpl) Rest() rest.Rest {
 	return c.restServices
+}
+
+func (c *clientImpl) HandleEvent(event gateway.Event) {
+
 }
 
 func (c *clientImpl) AddEventListeners(listeners ...EventListener) {

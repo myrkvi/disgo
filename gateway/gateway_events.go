@@ -10,24 +10,29 @@ import (
 	"github.com/disgoorg/disgo/discord"
 )
 
-type EventData interface {
+type Event interface {
 	MessageData
-	eventData()
+	EventType() EventType
 }
 
 // EventUnknown is an event that is not known to disgo
-type EventUnknown json.RawMessage
+type EventUnknown struct {
+	Data json.RawMessage
+	T    EventType
+}
 
 func (e EventUnknown) MarshalJSON() ([]byte, error) {
-	return json.RawMessage(e).MarshalJSON()
+	return e.Data.MarshalJSON()
 }
 
 func (e *EventUnknown) UnmarshalJSON(data []byte) error {
-	return (*json.RawMessage)(e).UnmarshalJSON(data)
+	return e.Data.UnmarshalJSON(data)
 }
 
 func (EventUnknown) messageData() {}
-func (EventUnknown) eventData()   {}
+func (e EventUnknown) EventType() EventType {
+	return e.T
+}
 
 // EventReady is the event sent by discord when you successfully Identify
 type EventReady struct {
@@ -40,15 +45,17 @@ type EventReady struct {
 	Application      discord.PartialApplication `json:"application"`
 }
 
-func (EventReady) messageData() {}
-func (EventReady) eventData()   {}
+func (EventReady) messageData()         {}
+func (EventReady) EventType() EventType { return EventTypeReady }
 
 type EventApplicationCommandPermissionsUpdate struct {
 	discord.ApplicationCommandPermissions
 }
 
 func (EventApplicationCommandPermissionsUpdate) messageData() {}
-func (EventApplicationCommandPermissionsUpdate) eventData()   {}
+func (EventApplicationCommandPermissionsUpdate) EventType() EventType {
+	return EventTypeApplicationCommandPermissionsUpdate
+}
 
 type EventChannelCreate struct {
 	discord.GuildChannel
@@ -63,8 +70,8 @@ func (e *EventChannelCreate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventChannelCreate) messageData() {}
-func (EventChannelCreate) eventData()   {}
+func (EventChannelCreate) messageData()         {}
+func (EventChannelCreate) EventType() EventType { return EventTypeChannelCreate }
 
 type EventChannelUpdate struct {
 	discord.GuildChannel
@@ -79,8 +86,8 @@ func (e *EventChannelUpdate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventChannelUpdate) messageData() {}
-func (EventChannelUpdate) eventData()   {}
+func (EventChannelUpdate) messageData()         {}
+func (EventChannelUpdate) EventType() EventType { return EventTypeChannelUpdate }
 
 type EventChannelDelete struct {
 	discord.GuildChannel
@@ -95,33 +102,35 @@ func (e *EventChannelDelete) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventChannelDelete) messageData() {}
-func (EventChannelDelete) eventData()   {}
+func (EventChannelDelete) messageData()         {}
+func (EventChannelDelete) EventType() EventType { return EventTypeChannelDelete }
 
 type EventThreadCreate struct {
 	discord.GuildThread
 	ThreadMember discord.ThreadMember `json:"thread_member"`
 }
 
-func (EventThreadCreate) messageData() {}
-func (EventThreadCreate) eventData()   {}
+func (EventThreadCreate) messageData()         {}
+func (EventThreadCreate) EventType() EventType { return EventTypeThreadCreate }
 
 type EventThreadUpdate struct {
 	discord.GuildThread
+	OldGuildThread discord.GuildThread `json:"-"`
 }
 
-func (EventThreadUpdate) messageData() {}
-func (EventThreadUpdate) eventData()   {}
+func (EventThreadUpdate) messageData()         {}
+func (EventThreadUpdate) EventType() EventType { return EventTypeThreadUpdate }
 
 type EventThreadDelete struct {
-	ID       snowflake.ID        `json:"id"`
-	GuildID  snowflake.ID        `json:"guild_id"`
-	ParentID snowflake.ID        `json:"parent_id"`
-	Type     discord.ChannelType `json:"type"`
+	ID             snowflake.ID        `json:"id"`
+	GuildID        snowflake.ID        `json:"guild_id"`
+	ParentID       snowflake.ID        `json:"parent_id"`
+	Type           discord.ChannelType `json:"type"`
+	OldGuildThread discord.GuildThread `json:"-"`
 }
 
-func (EventThreadDelete) messageData() {}
-func (EventThreadDelete) eventData()   {}
+func (EventThreadDelete) messageData()         {}
+func (EventThreadDelete) EventType() EventType { return EventTypeThreadDelete }
 
 type EventThreadListSync struct {
 	GuildID    snowflake.ID           `json:"guild_id"`
@@ -130,15 +139,15 @@ type EventThreadListSync struct {
 	Members    []discord.ThreadMember `json:"members"`
 }
 
-func (EventThreadListSync) messageData() {}
-func (EventThreadListSync) eventData()   {}
+func (EventThreadListSync) messageData()         {}
+func (EventThreadListSync) EventType() EventType { return EventTypeThreadListSync }
 
 type EventThreadMemberUpdate struct {
 	discord.ThreadMember
 }
 
-func (EventThreadMemberUpdate) messageData() {}
-func (EventThreadMemberUpdate) eventData()   {}
+func (EventThreadMemberUpdate) messageData()         {}
+func (EventThreadMemberUpdate) EventType() EventType { return EventTypeThreadMemberUpdate }
 
 type AddedThreadMember struct {
 	discord.ThreadMember
@@ -147,44 +156,45 @@ type AddedThreadMember struct {
 }
 
 type EventThreadMembersUpdate struct {
-	ID               snowflake.ID        `json:"id"`
-	GuildID          snowflake.ID        `json:"guild_id"`
-	MemberCount      int                 `json:"member_count"`
-	AddedMembers     []AddedThreadMember `json:"added_members"`
-	RemovedMemberIDs []snowflake.ID      `json:"removed_member_ids"`
+	ID               snowflake.ID           `json:"id"`
+	GuildID          snowflake.ID           `json:"guild_id"`
+	MemberCount      int                    `json:"member_count"`
+	AddedMembers     []AddedThreadMember    `json:"added_members"`
+	RemovedMemberIDs []snowflake.ID         `json:"removed_member_ids"`
+	RemovedMembers   []discord.ThreadMember `json:"-"`
 }
 
-func (EventThreadMembersUpdate) messageData() {}
-func (EventThreadMembersUpdate) eventData()   {}
+func (EventThreadMembersUpdate) messageData()         {}
+func (EventThreadMembersUpdate) EventType() EventType { return EventTypeThreadMembersUpdate }
 
 type EventGuildCreate struct {
 	discord.GatewayGuild
 }
 
-func (EventGuildCreate) messageData() {}
-func (EventGuildCreate) eventData()   {}
+func (EventGuildCreate) messageData()         {}
+func (EventGuildCreate) EventType() EventType { return EventTypeGuildCreate }
 
 type EventGuildUpdate struct {
 	discord.GatewayGuild
 }
 
-func (EventGuildUpdate) messageData() {}
-func (EventGuildUpdate) eventData()   {}
+func (EventGuildUpdate) messageData()         {}
+func (EventGuildUpdate) EventType() EventType { return EventTypeGuildUpdate }
 
 type EventGuildDelete struct {
 	discord.GatewayGuild
 }
 
-func (EventGuildDelete) messageData() {}
-func (EventGuildDelete) eventData()   {}
+func (EventGuildDelete) messageData()         {}
+func (EventGuildDelete) EventType() EventType { return EventTypeGuildDelete }
 
 type EventGuildAuditLogEntryCreate struct {
 	discord.AuditLogEntry
 	GuildID snowflake.ID `json:"guild_id"`
 }
 
-func (EventGuildAuditLogEntryCreate) messageData() {}
-func (EventGuildAuditLogEntryCreate) eventData()   {}
+func (EventGuildAuditLogEntryCreate) messageData()         {}
+func (EventGuildAuditLogEntryCreate) EventType() EventType { return EventTypeGuildAuditLogEntryCreate }
 
 type EventMessageReactionAdd struct {
 	UserID    snowflake.ID         `json:"user_id"`
@@ -208,8 +218,8 @@ func (e *EventMessageReactionAdd) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventMessageReactionAdd) messageData() {}
-func (EventMessageReactionAdd) eventData()   {}
+func (EventMessageReactionAdd) messageData()         {}
+func (EventMessageReactionAdd) EventType() EventType { return EventTypeMessageReactionAdd }
 
 type EventMessageReactionRemove struct {
 	UserID    snowflake.ID         `json:"user_id"`
@@ -219,8 +229,8 @@ type EventMessageReactionRemove struct {
 	Emoji     discord.PartialEmoji `json:"emoji"`
 }
 
-func (EventMessageReactionRemove) messageData() {}
-func (EventMessageReactionRemove) eventData()   {}
+func (EventMessageReactionRemove) messageData()         {}
+func (EventMessageReactionRemove) EventType() EventType { return EventTypeMessageReactionRemove }
 
 type EventMessageReactionRemoveEmoji struct {
 	ChannelID snowflake.ID         `json:"channel_id"`
@@ -230,7 +240,9 @@ type EventMessageReactionRemoveEmoji struct {
 }
 
 func (EventMessageReactionRemoveEmoji) messageData() {}
-func (EventMessageReactionRemoveEmoji) eventData()   {}
+func (EventMessageReactionRemoveEmoji) EventType() EventType {
+	return EventTypeMessageReactionRemoveEmoji
+}
 
 type EventMessageReactionRemoveAll struct {
 	ChannelID snowflake.ID  `json:"channel_id"`
@@ -238,8 +250,8 @@ type EventMessageReactionRemoveAll struct {
 	GuildID   *snowflake.ID `json:"guild_id"`
 }
 
-func (EventMessageReactionRemoveAll) messageData() {}
-func (EventMessageReactionRemoveAll) eventData()   {}
+func (EventMessageReactionRemoveAll) messageData()         {}
+func (EventMessageReactionRemoveAll) EventType() EventType { return EventTypeMessageReactionRemoveAll }
 
 type EventChannelPinsUpdate struct {
 	GuildID          *snowflake.ID `json:"guild_id"`
@@ -247,8 +259,8 @@ type EventChannelPinsUpdate struct {
 	LastPinTimestamp *time.Time    `json:"last_pin_timestamp"`
 }
 
-func (EventChannelPinsUpdate) messageData() {}
-func (EventChannelPinsUpdate) eventData()   {}
+func (EventChannelPinsUpdate) messageData()         {}
+func (EventChannelPinsUpdate) EventType() EventType { return EventTypeChannelPinsUpdate }
 
 type EventGuildMembersChunk struct {
 	GuildID    snowflake.ID       `json:"guild_id"`
@@ -260,24 +272,24 @@ type EventGuildMembersChunk struct {
 	Nonce      string             `json:"nonce"`
 }
 
-func (EventGuildMembersChunk) messageData() {}
-func (EventGuildMembersChunk) eventData()   {}
+func (EventGuildMembersChunk) messageData()         {}
+func (EventGuildMembersChunk) EventType() EventType { return EventTypeGuildMembersChunk }
 
 type EventGuildBanAdd struct {
 	GuildID snowflake.ID `json:"guild_id"`
 	User    discord.User `json:"user"`
 }
 
-func (EventGuildBanAdd) messageData() {}
-func (EventGuildBanAdd) eventData()   {}
+func (EventGuildBanAdd) messageData()         {}
+func (EventGuildBanAdd) EventType() EventType { return EventTypeGuildBanAdd }
 
 type EventGuildBanRemove struct {
 	GuildID snowflake.ID `json:"guild_id"`
 	User    discord.User `json:"user"`
 }
 
-func (EventGuildBanRemove) messageData() {}
-func (EventGuildBanRemove) eventData()   {}
+func (EventGuildBanRemove) messageData()         {}
+func (EventGuildBanRemove) EventType() EventType { return EventTypeGuildBanRemove }
 
 type EventGuildEmojisUpdate struct {
 	GuildID snowflake.ID    `json:"guild_id"`
@@ -297,45 +309,45 @@ func (e *EventGuildEmojisUpdate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventGuildEmojisUpdate) messageData() {}
-func (EventGuildEmojisUpdate) eventData()   {}
+func (EventGuildEmojisUpdate) messageData()         {}
+func (EventGuildEmojisUpdate) EventType() EventType { return EventTypeGuildEmojisUpdate }
 
 type EventGuildStickersUpdate struct {
 	GuildID  snowflake.ID      `json:"guild_id"`
 	Stickers []discord.Sticker `json:"stickers"`
 }
 
-func (EventGuildStickersUpdate) messageData() {}
-func (EventGuildStickersUpdate) eventData()   {}
+func (EventGuildStickersUpdate) messageData()         {}
+func (EventGuildStickersUpdate) EventType() EventType { return EventTypeGuildStickersUpdate }
 
 type EventGuildIntegrationsUpdate struct {
 	GuildID snowflake.ID `json:"guild_id"`
 }
 
-func (EventGuildIntegrationsUpdate) messageData() {}
-func (EventGuildIntegrationsUpdate) eventData()   {}
+func (EventGuildIntegrationsUpdate) messageData()         {}
+func (EventGuildIntegrationsUpdate) EventType() EventType { return EventTypeGuildIntegrationsUpdate }
 
 type EventGuildMemberAdd struct {
 	discord.Member
 }
 
-func (EventGuildMemberAdd) messageData() {}
-func (EventGuildMemberAdd) eventData()   {}
+func (EventGuildMemberAdd) messageData()         {}
+func (EventGuildMemberAdd) EventType() EventType { return EventTypeGuildMemberAdd }
 
 type EventGuildMemberUpdate struct {
 	discord.Member
 }
 
-func (EventGuildMemberUpdate) messageData() {}
-func (EventGuildMemberUpdate) eventData()   {}
+func (EventGuildMemberUpdate) messageData()         {}
+func (EventGuildMemberUpdate) EventType() EventType { return EventTypeGuildMemberUpdate }
 
 type EventGuildMemberRemove struct {
 	GuildID snowflake.ID `json:"guild_id"`
 	User    discord.User `json:"user"`
 }
 
-func (EventGuildMemberRemove) messageData() {}
-func (EventGuildMemberRemove) eventData()   {}
+func (EventGuildMemberRemove) messageData()         {}
+func (EventGuildMemberRemove) EventType() EventType { return EventTypeGuildMemberRemove }
 
 type EventGuildRoleCreate struct {
 	GuildID snowflake.ID `json:"guild_id"`
@@ -359,16 +371,16 @@ func (e *EventGuildRoleCreate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(eventGuildRoleCreate(*e))
 }
 
-func (EventGuildRoleCreate) messageData() {}
-func (EventGuildRoleCreate) eventData()   {}
+func (EventGuildRoleCreate) messageData()         {}
+func (EventGuildRoleCreate) EventType() EventType { return EventTypeGuildRoleCreate }
 
 type EventGuildRoleDelete struct {
 	GuildID snowflake.ID `json:"guild_id"`
 	RoleID  snowflake.ID `json:"role_id"`
 }
 
-func (EventGuildRoleDelete) messageData() {}
-func (EventGuildRoleDelete) eventData()   {}
+func (EventGuildRoleDelete) messageData()         {}
+func (EventGuildRoleDelete) EventType() EventType { return EventTypeGuildRoleDelete }
 
 type EventGuildRoleUpdate struct {
 	GuildID snowflake.ID `json:"guild_id"`
@@ -392,29 +404,35 @@ func (e *EventGuildRoleUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(eventGuildRoleUpdate(*e))
 }
 
-func (EventGuildRoleUpdate) messageData() {}
-func (EventGuildRoleUpdate) eventData()   {}
+func (EventGuildRoleUpdate) messageData()         {}
+func (EventGuildRoleUpdate) EventType() EventType { return EventTypeGuildRoleUpdate }
 
 type EventGuildScheduledEventCreate struct {
 	discord.GuildScheduledEvent
 }
 
 func (EventGuildScheduledEventCreate) messageData() {}
-func (EventGuildScheduledEventCreate) eventData()   {}
+func (EventGuildScheduledEventCreate) EventType() EventType {
+	return EventTypeGuildScheduledEventCreate
+}
 
 type EventGuildScheduledEventUpdate struct {
 	discord.GuildScheduledEvent
 }
 
 func (EventGuildScheduledEventUpdate) messageData() {}
-func (EventGuildScheduledEventUpdate) eventData()   {}
+func (EventGuildScheduledEventUpdate) EventType() EventType {
+	return EventTypeGuildScheduledEventUpdate
+}
 
 type EventGuildScheduledEventDelete struct {
 	discord.GuildScheduledEvent
 }
 
 func (EventGuildScheduledEventDelete) messageData() {}
-func (EventGuildScheduledEventDelete) eventData()   {}
+func (EventGuildScheduledEventDelete) EventType() EventType {
+	return EventTypeGuildScheduledEventDelete
+}
 
 type EventGuildScheduledEventUserAdd struct {
 	GuildScheduledEventID snowflake.ID `json:"guild_scheduled_event_id"`
@@ -423,7 +441,9 @@ type EventGuildScheduledEventUserAdd struct {
 }
 
 func (EventGuildScheduledEventUserAdd) messageData() {}
-func (EventGuildScheduledEventUserAdd) eventData()   {}
+func (EventGuildScheduledEventUserAdd) EventType() EventType {
+	return EventTypeGuildScheduledEventUserAdd
+}
 
 type EventGuildScheduledEventUserRemove struct {
 	GuildScheduledEventID snowflake.ID `json:"guild_scheduled_event_id"`
@@ -432,7 +452,9 @@ type EventGuildScheduledEventUserRemove struct {
 }
 
 func (EventGuildScheduledEventUserRemove) messageData() {}
-func (EventGuildScheduledEventUserRemove) eventData()   {}
+func (EventGuildScheduledEventUserRemove) EventType() EventType {
+	return EventTypeGuildScheduledEventUserRemove
+}
 
 type EventInteractionCreate struct {
 	discord.Interaction
@@ -451,15 +473,15 @@ func (e EventInteractionCreate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Interaction)
 }
 
-func (EventInteractionCreate) messageData() {}
-func (EventInteractionCreate) eventData()   {}
+func (EventInteractionCreate) messageData()         {}
+func (EventInteractionCreate) EventType() EventType { return EventTypeInteractionCreate }
 
 type EventInviteCreate struct {
 	discord.Invite
 }
 
-func (EventInviteCreate) messageData() {}
-func (EventInviteCreate) eventData()   {}
+func (EventInviteCreate) messageData()         {}
+func (EventInviteCreate) EventType() EventType { return EventTypeInviteCreate }
 
 type EventInviteDelete struct {
 	ChannelID snowflake.ID  `json:"channel_id"`
@@ -467,68 +489,72 @@ type EventInviteDelete struct {
 	Code      string        `json:"code"`
 }
 
-func (EventInviteDelete) messageData() {}
-func (EventInviteDelete) eventData()   {}
+func (EventInviteDelete) messageData()         {}
+func (EventInviteDelete) EventType() EventType { return EventTypeInviteDelete }
 
 type EventMessageCreate struct {
 	discord.Message
 }
 
-func (EventMessageCreate) messageData() {}
-func (EventMessageCreate) eventData()   {}
+func (EventMessageCreate) messageData()         {}
+func (EventMessageCreate) EventType() EventType { return EventTypeMessageCreate }
 
 type EventMessageUpdate struct {
 	discord.Message
+	OldMessage discord.Message `json:"-"`
 }
 
-func (EventMessageUpdate) messageData() {}
-func (EventMessageUpdate) eventData()   {}
+func (EventMessageUpdate) messageData()         {}
+func (EventMessageUpdate) EventType() EventType { return EventTypeMessageUpdate }
 
 type EventMessageDelete struct {
-	ID        snowflake.ID  `json:"id"`
-	ChannelID snowflake.ID  `json:"channel_id"`
-	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+	ID         snowflake.ID    `json:"id"`
+	ChannelID  snowflake.ID    `json:"channel_id"`
+	GuildID    *snowflake.ID   `json:"guild_id,omitempty"`
+	OldMessage discord.Message `json:"-"`
 }
 
-func (EventMessageDelete) messageData() {}
-func (EventMessageDelete) eventData()   {}
+func (EventMessageDelete) messageData()         {}
+func (EventMessageDelete) EventType() EventType { return EventTypeMessageDelete }
 
 type EventMessageDeleteBulk struct {
-	IDs       []snowflake.ID `json:"id"`
-	ChannelID snowflake.ID   `json:"channel_id"`
-	GuildID   *snowflake.ID  `json:"guild_id,omitempty"`
+	IDs         []snowflake.ID    `json:"id"`
+	ChannelID   snowflake.ID      `json:"channel_id"`
+	GuildID     *snowflake.ID     `json:"guild_id,omitempty"`
+	OldMessages []discord.Message `json:"-"`
 }
 
-func (EventMessageDeleteBulk) messageData() {}
-func (EventMessageDeleteBulk) eventData()   {}
+func (EventMessageDeleteBulk) messageData()         {}
+func (EventMessageDeleteBulk) EventType() EventType { return EventTypeMessageDeleteBulk }
 
 type EventPresenceUpdate struct {
 	discord.Presence
 }
 
-func (EventPresenceUpdate) messageData() {}
-func (EventPresenceUpdate) eventData()   {}
+func (EventPresenceUpdate) messageData()         {}
+func (EventPresenceUpdate) EventType() EventType { return EventTypePresenceUpdate }
 
 type EventStageInstanceCreate struct {
 	discord.StageInstance
 }
 
-func (EventStageInstanceCreate) messageData() {}
-func (EventStageInstanceCreate) eventData()   {}
+func (EventStageInstanceCreate) messageData()         {}
+func (EventStageInstanceCreate) EventType() EventType { return EventTypeStageInstanceCreate }
 
 type EventStageInstanceUpdate struct {
 	discord.StageInstance
+	OldStageInstance discord.StageInstance `json:"-"`
 }
 
-func (EventStageInstanceUpdate) messageData() {}
-func (EventStageInstanceUpdate) eventData()   {}
+func (EventStageInstanceUpdate) messageData()         {}
+func (EventStageInstanceUpdate) EventType() EventType { return EventTypeStageInstanceUpdate }
 
 type EventStageInstanceDelete struct {
 	discord.StageInstance
 }
 
-func (EventStageInstanceDelete) messageData() {}
-func (EventStageInstanceDelete) eventData()   {}
+func (EventStageInstanceDelete) messageData()         {}
+func (EventStageInstanceDelete) EventType() EventType { return EventTypeStageInstanceDelete }
 
 type EventTypingStart struct {
 	ChannelID snowflake.ID    `json:"channel_id"`
@@ -553,23 +579,23 @@ func (e *EventTypingStart) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventTypingStart) messageData() {}
-func (EventTypingStart) eventData()   {}
+func (EventTypingStart) messageData()         {}
+func (EventTypingStart) EventType() EventType { return EventTypeTypingStart }
 
 type EventUserUpdate struct {
 	discord.OAuth2User
 }
 
-func (EventUserUpdate) messageData() {}
-func (EventUserUpdate) eventData()   {}
+func (EventUserUpdate) messageData()         {}
+func (EventUserUpdate) EventType() EventType { return EventTypeUserUpdate }
 
 type EventVoiceStateUpdate struct {
 	discord.VoiceState
 	Member discord.Member `json:"member"`
 }
 
-func (EventVoiceStateUpdate) messageData() {}
-func (EventVoiceStateUpdate) eventData()   {}
+func (EventVoiceStateUpdate) messageData()         {}
+func (EventVoiceStateUpdate) EventType() EventType { return EventTypeVoiceStateUpdate }
 
 type EventVoiceServerUpdate struct {
 	Token    string       `json:"token"`
@@ -577,16 +603,16 @@ type EventVoiceServerUpdate struct {
 	Endpoint *string      `json:"endpoint"`
 }
 
-func (EventVoiceServerUpdate) messageData() {}
-func (EventVoiceServerUpdate) eventData()   {}
+func (EventVoiceServerUpdate) messageData()         {}
+func (EventVoiceServerUpdate) EventType() EventType { return EventTypeVoiceServerUpdate }
 
 type EventWebhooksUpdate struct {
 	GuildID   snowflake.ID `json:"guild_id"`
 	ChannelID snowflake.ID `json:"channel_id"`
 }
 
-func (EventWebhooksUpdate) messageData() {}
-func (EventWebhooksUpdate) eventData()   {}
+func (EventWebhooksUpdate) messageData()         {}
+func (EventWebhooksUpdate) EventType() EventType { return EventTypeWebhooksUpdate }
 
 type EventIntegrationCreate struct {
 	discord.Integration
@@ -610,8 +636,8 @@ func (e *EventIntegrationCreate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventIntegrationCreate) messageData() {}
-func (EventIntegrationCreate) eventData()   {}
+func (EventIntegrationCreate) messageData()         {}
+func (EventIntegrationCreate) EventType() EventType { return EventTypeIntegrationCreate }
 
 type EventIntegrationUpdate struct {
 	discord.Integration
@@ -635,8 +661,8 @@ func (e *EventIntegrationUpdate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (EventIntegrationUpdate) messageData() {}
-func (EventIntegrationUpdate) eventData()   {}
+func (EventIntegrationUpdate) messageData()         {}
+func (EventIntegrationUpdate) EventType() EventType { return EventTypeIntegrationUpdate }
 
 type EventIntegrationDelete struct {
 	ID            snowflake.ID  `json:"id"`
@@ -644,29 +670,29 @@ type EventIntegrationDelete struct {
 	ApplicationID *snowflake.ID `json:"application_id"`
 }
 
-func (EventIntegrationDelete) messageData() {}
-func (EventIntegrationDelete) eventData()   {}
+func (EventIntegrationDelete) messageData()         {}
+func (EventIntegrationDelete) EventType() EventType { return EventTypeIntegrationDelete }
 
 type EventAutoModerationRuleCreate struct {
 	discord.AutoModerationRule
 }
 
-func (EventAutoModerationRuleCreate) messageData() {}
-func (EventAutoModerationRuleCreate) eventData()   {}
+func (EventAutoModerationRuleCreate) messageData()         {}
+func (EventAutoModerationRuleCreate) EventType() EventType { return EventTypeAutoModerationRuleCreate }
 
 type EventAutoModerationRuleUpdate struct {
 	discord.AutoModerationRule
 }
 
-func (EventAutoModerationRuleUpdate) messageData() {}
-func (EventAutoModerationRuleUpdate) eventData()   {}
+func (EventAutoModerationRuleUpdate) messageData()         {}
+func (EventAutoModerationRuleUpdate) EventType() EventType { return EventTypeAutoModerationRuleUpdate }
 
 type EventAutoModerationRuleDelete struct {
 	discord.AutoModerationRule
 }
 
-func (EventAutoModerationRuleDelete) messageData() {}
-func (EventAutoModerationRuleDelete) eventData()   {}
+func (EventAutoModerationRuleDelete) messageData()         {}
+func (EventAutoModerationRuleDelete) EventType() EventType { return EventTypeAutoModerationRuleDelete }
 
 type EventAutoModerationActionExecution struct {
 	GuildID              snowflake.ID                      `json:"guild_id"`
@@ -683,20 +709,22 @@ type EventAutoModerationActionExecution struct {
 }
 
 func (EventAutoModerationActionExecution) messageData() {}
-func (EventAutoModerationActionExecution) eventData()   {}
-
-type EventRaw struct {
-	EventType EventType
-	Payload   io.Reader
+func (EventAutoModerationActionExecution) EventType() EventType {
+	return EventTypeAutoModerationActionExecution
 }
 
-func (EventRaw) messageData() {}
-func (EventRaw) eventData()   {}
+type EventRaw struct {
+	T       EventType
+	Payload io.Reader
+}
+
+func (EventRaw) messageData()         {}
+func (EventRaw) EventType() EventType { return EventTypeRaw }
 
 type EventHeartbeatAck struct {
 	LastHeartbeat time.Time
 	NewHeartbeat  time.Time
 }
 
-func (EventHeartbeatAck) messageData() {}
-func (EventHeartbeatAck) eventData()   {}
+func (EventHeartbeatAck) messageData()         {}
+func (EventHeartbeatAck) EventType() EventType { return EventTypeHeartbeatAck }

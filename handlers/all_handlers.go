@@ -6,35 +6,9 @@ import (
 	"github.com/disgoorg/disgo/httpserver"
 )
 
-// DefaultHTTPServerEventHandlerFunc is the default handler for the httpserver.Server and sends payloads to the bot.EventManager.
-func DefaultHTTPServerEventHandlerFunc(client bot.Client) httpserver.EventHandlerFunc {
-	return client.EventManager().HandleHTTPEvent
-}
-
-// GetHTTPServerHandler returns the default httpserver.Server event handler for processing the raw payload which gets passed into the bot.EventManager
-func GetHTTPServerHandler() bot.HTTPServerEventHandler {
-	return &httpserverHandlerInteractionCreate{}
-}
-
-// DefaultGatewayEventHandlerFunc is the default handler for the gateway.Gateway and sends payloads to the bot.EventManager.
-func DefaultGatewayEventHandlerFunc(client bot.Client) gateway.EventHandlerFunc {
-	return client.EventManager().HandleGatewayEvent
-}
-
-// GetGatewayHandlers returns the default gateway.Gateway event handlers for processing the raw payload which gets passed into the bot.EventManager
-func GetGatewayHandlers() map[gateway.EventType]bot.GatewayEventHandler {
-	handlers := make(map[gateway.EventType]bot.GatewayEventHandler, len(allEventHandlers))
-	for _, handler := range allEventHandlers {
-		handlers[handler.EventType()] = handler
-	}
-	return handlers
-}
 
 var allEventHandlers = []bot.GatewayEventHandler{
-	bot.NewGatewayEventHandler(gateway.EventTypeRaw, gatewayHandlerRaw),
-	bot.NewGatewayEventHandler(gateway.EventTypeHeartbeatAck, gatewayHandlerHeartbeatAck),
-	bot.NewGatewayEventHandler(gateway.EventTypeReady, gatewayHandlerReady),
-	bot.NewGatewayEventHandler(gateway.EventTypeResumed, gatewayHandlerResumed),
+
 
 	bot.NewGatewayEventHandler(gateway.EventTypeApplicationCommandPermissionsUpdate, gatewayHandlerApplicationCommandPermissionsUpdate),
 
@@ -47,13 +21,6 @@ var allEventHandlers = []bot.GatewayEventHandler{
 	bot.NewGatewayEventHandler(gateway.EventTypeChannelUpdate, gatewayHandlerChannelUpdate),
 	bot.NewGatewayEventHandler(gateway.EventTypeChannelDelete, gatewayHandlerChannelDelete),
 	bot.NewGatewayEventHandler(gateway.EventTypeChannelPinsUpdate, gatewayHandlerChannelPinsUpdate),
-
-	bot.NewGatewayEventHandler(gateway.EventTypeThreadCreate, gatewayHandlerThreadCreate),
-	bot.NewGatewayEventHandler(gateway.EventTypeThreadUpdate, gatewayHandlerThreadUpdate),
-	bot.NewGatewayEventHandler(gateway.EventTypeThreadDelete, gatewayHandlerThreadDelete),
-	bot.NewGatewayEventHandler(gateway.EventTypeThreadListSync, gatewayHandlerThreadListSync),
-	bot.NewGatewayEventHandler(gateway.EventTypeThreadMemberUpdate, gatewayHandlerThreadMemberUpdate),
-	bot.NewGatewayEventHandler(gateway.EventTypeThreadMembersUpdate, gatewayHandlerThreadMembersUpdate),
 
 	bot.NewGatewayEventHandler(gateway.EventTypeGuildCreate, gatewayHandlerGuildCreate),
 	bot.NewGatewayEventHandler(gateway.EventTypeGuildUpdate, gatewayHandlerGuildUpdate),
@@ -91,16 +58,7 @@ var allEventHandlers = []bot.GatewayEventHandler{
 
 	bot.NewGatewayEventHandler(gateway.EventTypeInviteCreate, gatewayHandlerInviteCreate),
 	bot.NewGatewayEventHandler(gateway.EventTypeInviteDelete, gatewayHandlerInviteDelete),
-
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageCreate, gatewayHandlerMessageCreate),
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageUpdate, gatewayHandlerMessageUpdate),
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageDelete, gatewayHandlerMessageDelete),
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageDeleteBulk, gatewayHandlerMessageDeleteBulk),
-
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageReactionAdd, gatewayHandlerMessageReactionAdd),
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageReactionRemove, gatewayHandlerMessageReactionRemove),
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageReactionRemoveAll, gatewayHandlerMessageReactionRemoveAll),
-	bot.NewGatewayEventHandler(gateway.EventTypeMessageReactionRemoveEmoji, gatewayHandlerMessageReactionRemoveEmoji),
+	
 
 	bot.NewGatewayEventHandler(gateway.EventTypePresenceUpdate, gatewayHandlerPresenceUpdate),
 

@@ -390,7 +390,7 @@ loop:
 			// set last sequence received
 			g.config.LastSequenceReceived = &message.S
 
-			eventData, ok := message.D.(EventData)
+			eventData, ok := message.D.(Event)
 			if !ok && message.D != nil {
 				g.config.Logger.Error(g.formatLogsf("invalid message data of type %T received", message.D))
 				continue
@@ -411,12 +411,12 @@ loop:
 
 			// push message to the command manager
 			if g.config.EnableRawEvents {
-				g.eventHandlerFunc(EventTypeRaw, message.S, g.config.ShardID, EventRaw{
-					EventType: message.T,
-					Payload:   bytes.NewReader(message.RawD),
+				g.eventHandlerFunc(EventRaw{
+					T:       message.T,
+					Payload: bytes.NewReader(message.RawD),
 				})
 			}
-			g.eventHandlerFunc(message.T, message.S, g.config.ShardID, eventData)
+			g.eventHandlerFunc(eventData)
 
 		case OpcodeHeartbeat:
 			g.sendHeartbeat()
@@ -449,7 +449,7 @@ loop:
 
 		case OpcodeHeartbeatACK:
 			newHeartbeat := time.Now().UTC()
-			g.eventHandlerFunc(EventTypeHeartbeatAck, message.S, g.config.ShardID, EventHeartbeatAck{
+			g.eventHandlerFunc(EventHeartbeatAck{
 				LastHeartbeat: g.lastHeartbeatReceived,
 				NewHeartbeat:  newHeartbeat,
 			})

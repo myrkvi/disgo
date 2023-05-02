@@ -71,7 +71,7 @@ func PayloadWithFiles(v any, files ...*File) (*MultipartBuffer, error) {
 func partHeader(contentDisposition string, contentType string) textproto.MIMEHeader {
 	return textproto.MIMEHeader{
 		"Content-Disposition": []string{contentDisposition},
-		"Content-Type":        []string{contentType},
+		"Content-EventType":   []string{contentType},
 	}
 }
 

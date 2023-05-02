@@ -49,9 +49,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
-
-	"github.com/disgoorg/disgo/bot"
-	"github.com/disgoorg/disgo/handlers"
 )
 
 const (
@@ -92,20 +89,4 @@ func getOS() string {
 		return "darwin"
 	}
 	return "linux"
-}
-
-// New creates a new bot.Client with the provided token & bot.ConfigOpt(s)
-func New(token string, opts ...bot.ConfigOpt) (bot.Client, error) {
-	config := bot.DefaultConfig(handlers.GetGatewayHandlers(), handlers.GetHTTPServerHandler())
-	config.Apply(opts)
-
-	return bot.BuildClient(token,
-		*config,
-		handlers.DefaultGatewayEventHandlerFunc,
-		handlers.DefaultHTTPServerEventHandlerFunc,
-		OS,
-		Name,
-		GitHub,
-		Version,
-	)
 }

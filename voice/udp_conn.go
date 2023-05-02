@@ -201,7 +201,7 @@ func (u *udpConnImpl) Open(ctx context.Context, ip string, port int, ssrc uint32
 
 	u.packet = [12]byte{
 		0: 0x80, // Version + Flags
-		1: 0x78, // Payload Type
+		1: 0x78, // Payload EventType
 		// [2:4] // Sequence
 		// [4:8] // Timestamp
 	}

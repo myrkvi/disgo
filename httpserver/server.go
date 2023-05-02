@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/json"
 	"github.com/disgoorg/log"
 
@@ -17,7 +18,7 @@ import (
 
 type (
 	// EventHandlerFunc is used to handle events from Discord's Outgoing Webhooks
-	EventHandlerFunc func(responseFunc RespondFunc, event EventInteractionCreate)
+	EventHandlerFunc func(event gateway.Event)
 
 	// RespondFunc is used to respond to Discord's Outgoing Webhooks
 	RespondFunc func(response discord.InteractionResponse) error
@@ -25,20 +26,8 @@ type (
 
 // EventInteractionCreate is the event payload when an interaction is created via Discord's Outgoing Webhooks
 type EventInteractionCreate struct {
-	discord.Interaction
-}
-
-func (e *EventInteractionCreate) UnmarshalJSON(data []byte) error {
-	interaction, err := discord.UnmarshalInteraction(data)
-	if err != nil {
-		return err
-	}
-	e.Interaction = interaction
-	return nil
-}
-
-func (e EventInteractionCreate) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.Interaction)
+	gateway.EventInteractionCreate
+	Respond RespondFunc `json:"-"`
 }
 
 // Server is used for receiving Discord's interactions via Outgoing Webhooks
@@ -138,8 +127,7 @@ func HandleInteraction(publicKey PublicKey, logger log.Logger, handleFunc EventH
 			mu     sync.Mutex
 		)
 
-		// send interaction to our handler
-		go handleFunc(func(response discord.InteractionResponse) error {
+		v.Respond = func(response discord.InteractionResponse) error {
 			mu.Lock()
 			defer mu.Unlock()
 
@@ -155,7 +143,10 @@ func HandleInteraction(publicKey PublicKey, logger log.Logger, handleFunc EventH
 			responseChannel <- response
 			// wait if we get any error while processing the response
 			return <-errorChannel
-		}, v)
+		}
+
+		// send interaction to our handler
+		go handleFunc(v)
 
 		var (
 			body any

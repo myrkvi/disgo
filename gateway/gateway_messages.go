@@ -100,9 +100,9 @@ type MessageData interface {
 	messageData()
 }
 
-func UnmarshalEventData(data []byte, eventType EventType) (EventData, error) {
+func UnmarshalEventData(data []byte, eventType EventType) (Event, error) {
 	var (
-		eventData EventData
+		eventData Event
 		err       error
 	)
 	switch eventType {
