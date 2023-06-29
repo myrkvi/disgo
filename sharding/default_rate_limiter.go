@@ -8,27 +8,27 @@ import (
 	"github.com/sasha-s/go-csync"
 )
 
-var _ RateLimiter = (*rateLimiterImpl)(nil)
+var _ RateLimiter = (*defaultRateLimiter)(nil)
 
 // NewRateLimiter creates a new default RateLimiter with the given RateLimiterConfigOpt(s).
 func NewRateLimiter(opts ...RateLimiterConfigOpt) RateLimiter {
 	config := DefaultRateLimiterConfig()
 	config.Apply(opts)
 
-	return &rateLimiterImpl{
+	return &defaultRateLimiter{
 		buckets: map[int]*bucket{},
 		config:  *config,
 	}
 }
 
-type rateLimiterImpl struct {
+type defaultRateLimiter struct {
 	mu sync.Mutex
 
 	buckets map[int]*bucket
 	config  RateLimiterConfig
 }
 
-func (r *rateLimiterImpl) Close(ctx context.Context) {
+func (r *defaultRateLimiter) Close(ctx context.Context) {
 	var wg sync.WaitGroup
 	r.mu.Lock()
 
@@ -45,7 +45,7 @@ func (r *rateLimiterImpl) Close(ctx context.Context) {
 	}
 }
 
-func (r *rateLimiterImpl) getBucket(shardID int, create bool) *bucket {
+func (r *defaultRateLimiter) getBucket(shardID int, create bool) *bucket {
 	r.config.Logger.Debug("locking shard srate limiter")
 	r.mu.Lock()
 	defer func() {
@@ -67,7 +67,7 @@ func (r *rateLimiterImpl) getBucket(shardID int, create bool) *bucket {
 	return b
 }
 
-func (r *rateLimiterImpl) WaitBucket(ctx context.Context, shardID int) error {
+func (r *defaultRateLimiter) WaitBucket(ctx context.Context, shardID int) error {
 	b := r.getBucket(shardID, true)
 	r.config.Logger.Debugf("locking shard bucket: Key: %d, Reset: %s", b.Key, b.Reset)
 	if err := b.mu.CLock(ctx); err != nil {
@@ -96,7 +96,7 @@ func (r *rateLimiterImpl) WaitBucket(ctx context.Context, shardID int) error {
 	return nil
 }
 
-func (r *rateLimiterImpl) UnlockBucket(shardID int) {
+func (r *defaultRateLimiter) UnlockBucket(shardID int) {
 	b := r.getBucket(shardID, false)
 	if b == nil {
 		return

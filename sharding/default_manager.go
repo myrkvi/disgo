@@ -10,14 +10,14 @@ import (
 	"github.com/disgoorg/disgo/gateway"
 )
 
-var _ ShardManager = (*shardManagerImpl)(nil)
+var _ Manager = (*defaultManager)(nil)
 
-// New creates a new default ShardManager with the given token, eventHandlerFunc and ConfigOpt(s).
-func New(token string, eventHandlerFunc gateway.EventHandlerFunc, opts ...ConfigOpt) ShardManager {
+// New creates a new default Manager with the given token, eventHandlerFunc and ConfigOpt(s).
+func New(token string, eventHandlerFunc gateway.EventHandlerFunc, opts ...ConfigOpt) Manager {
 	config := DefaultConfig()
 	config.Apply(opts)
 
-	return &shardManagerImpl{
+	return &defaultManager{
 		shards:           map[int]gateway.Gateway{},
 		token:            token,
 		eventHandlerFunc: eventHandlerFunc,
@@ -25,7 +25,7 @@ func New(token string, eventHandlerFunc gateway.EventHandlerFunc, opts ...Config
 	}
 }
 
-type shardManagerImpl struct {
+type defaultManager struct {
 	shards   map[int]gateway.Gateway
 	shardsMu sync.Mutex
 
@@ -34,7 +34,7 @@ type shardManagerImpl struct {
 	config           Config
 }
 
-func (m *shardManagerImpl) closeHandler(shard gateway.Gateway, err error) {
+func (m *defaultManager) closeHandler(shard gateway.Gateway, err error) {
 	if closeError, ok := err.(*websocket.CloseError); !m.config.AutoScaling || !ok || gateway.CloseEventCodeByCode(closeError.Code) != gateway.CloseEventCodeShardingRequired {
 		return
 	}
@@ -84,7 +84,7 @@ func (m *shardManagerImpl) closeHandler(shard gateway.Gateway, err error) {
 	m.config.Logger.Debugf("re-sharded shard %d into newShards: %d, newShardCount: %d", shard.ShardID(), newShardIDs, newShardCount)
 }
 
-func (m *shardManagerImpl) Open(ctx context.Context) {
+func (m *defaultManager) Open(ctx context.Context) {
 	m.config.Logger.Debugf("opening %+v shards...", m.config.ShardIDs)
 	var wg sync.WaitGroup
 
@@ -115,7 +115,7 @@ func (m *shardManagerImpl) Open(ctx context.Context) {
 	wg.Wait()
 }
 
-func (m *shardManagerImpl) Close(ctx context.Context) {
+func (m *defaultManager) Close(ctx context.Context) {
 	m.config.Logger.Debugf("closing %v shards...", m.config.ShardIDs)
 	var wg sync.WaitGroup
 
@@ -133,11 +133,11 @@ func (m *shardManagerImpl) Close(ctx context.Context) {
 	wg.Wait()
 }
 
-func (m *shardManagerImpl) OpenShard(ctx context.Context, shardID int) error {
+func (m *defaultManager) OpenShard(ctx context.Context, shardID int) error {
 	return m.openShard(ctx, shardID, m.config.ShardCount)
 }
 
-func (m *shardManagerImpl) openShard(ctx context.Context, shardID int, shardCount int) error {
+func (m *defaultManager) openShard(ctx context.Context, shardID int, shardCount int) error {
 	m.config.Logger.Debugf("opening shard %d...", shardID)
 
 	if err := m.config.RateLimiter.WaitBucket(ctx, shardID); err != nil {
@@ -153,7 +153,7 @@ func (m *shardManagerImpl) openShard(ctx context.Context, shardID int, shardCoun
 	return shard.Open(ctx)
 }
 
-func (m *shardManagerImpl) CloseShard(ctx context.Context, shardID int) {
+func (m *defaultManager) CloseShard(ctx context.Context, shardID int) {
 	m.config.Logger.Debugf("closing shard %d...", shardID)
 	m.shardsMu.Lock()
 	defer m.shardsMu.Unlock()
@@ -164,23 +164,27 @@ func (m *shardManagerImpl) CloseShard(ctx context.Context, shardID int) {
 	}
 }
 
-func (m *shardManagerImpl) ShardByGuildID(guildId snowflake.ID) gateway.Gateway {
+func (m *defaultManager) ShardByGuildID(guildId snowflake.ID) (gateway.Gateway, bool) {
 	shardCount := m.config.ShardCount
-	var shard gateway.Gateway
+	var (
+		shard gateway.Gateway
+		ok    bool
+	)
 	for shard == nil || shardCount != 0 {
-		shard = m.Shard(ShardIDByGuild(guildId, shardCount))
+		shard, ok = m.Shard(ShardIDByGuild(guildId, shardCount))
 		shardCount /= m.config.ShardSplitCount
 	}
-	return shard
+	return shard, ok
 }
 
-func (m *shardManagerImpl) Shard(shardID int) gateway.Gateway {
+func (m *defaultManager) Shard(shardID int) (gateway.Gateway, bool) {
 	m.shardsMu.Lock()
 	defer m.shardsMu.Unlock()
-	return m.shards[shardID]
+	shard, ok := m.shards[shardID]
+	return shard, ok
 }
 
-func (m *shardManagerImpl) Shards() map[int]gateway.Gateway {
+func (m *defaultManager) Shards() map[int]gateway.Gateway {
 	m.shardsMu.Lock()
 	defer m.shardsMu.Unlock()
 	shards := make(map[int]gateway.Gateway, len(m.shards))

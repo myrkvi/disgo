@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/gateway"
 )
 
 type (
-	Handler func(e *events.InteractionCreate) error
+	Handler func(e gateway.EventInteractionCreate) error
 
 	Middleware func(next Handler) Handler
 

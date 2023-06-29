@@ -3,18 +3,18 @@ package discord
 import "github.com/disgoorg/json"
 
 var (
-	_ Interaction = (*ModalSubmitInteraction)(nil)
+	_ Interaction = (*ModalInteraction)(nil)
 )
 
-type ModalSubmitInteraction struct {
+type ModalInteraction struct {
 	baseInteraction
-	Data ModalSubmitInteractionData `json:"data"`
+	Data ModalInteractionData `json:"data"`
 }
 
-func (i *ModalSubmitInteraction) UnmarshalJSON(data []byte) error {
+func (i *ModalInteraction) UnmarshalJSON(data []byte) error {
 	var interaction struct {
 		rawInteraction
-		Data ModalSubmitInteractionData `json:"data"`
+		Data ModalInteractionData `json:"data"`
 	}
 	if err := json.Unmarshal(data, &interaction); err != nil {
 		return err
@@ -37,10 +37,10 @@ func (i *ModalSubmitInteraction) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (i ModalSubmitInteraction) MarshalJSON() ([]byte, error) {
+func (i ModalInteraction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		rawInteraction
-		Data ModalSubmitInteractionData `json:"data"`
+		Data ModalInteractionData `json:"data"`
 	}{
 		rawInteraction: rawInteraction{
 			ID:             i.id,
@@ -61,19 +61,19 @@ func (i ModalSubmitInteraction) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (ModalSubmitInteraction) Type() InteractionType {
-	return InteractionTypeModalSubmit
+func (ModalInteraction) Type() InteractionType {
+	return InteractionTypeModal
 }
 
-func (ModalSubmitInteraction) interaction() {}
+func (ModalInteraction) interaction() {}
 
-type ModalSubmitInteractionData struct {
+type ModalInteractionData struct {
 	CustomID   string                          `json:"custom_id"`
 	Components map[string]InteractiveComponent `json:"components"`
 }
 
-func (d *ModalSubmitInteractionData) UnmarshalJSON(data []byte) error {
-	type modalSubmitInteractionData ModalSubmitInteractionData
+func (d *ModalInteractionData) UnmarshalJSON(data []byte) error {
+	type modalSubmitInteractionData ModalInteractionData
 	var iData struct {
 		Components []UnmarshalComponent `json:"components"`
 		modalSubmitInteractionData
@@ -83,7 +83,7 @@ func (d *ModalSubmitInteractionData) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*d = ModalSubmitInteractionData(iData.modalSubmitInteractionData)
+	*d = ModalInteractionData(iData.modalSubmitInteractionData)
 
 	if len(iData.Components) > 0 {
 		d.Components = make(map[string]InteractiveComponent, len(iData.Components))
@@ -96,12 +96,12 @@ func (d *ModalSubmitInteractionData) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (d ModalSubmitInteractionData) Component(customID string) (InteractiveComponent, bool) {
+func (d ModalInteractionData) Component(customID string) (InteractiveComponent, bool) {
 	component, ok := d.Components[customID]
 	return component, ok
 }
 
-func (d ModalSubmitInteractionData) TextInputComponent(customID string) (TextInputComponent, bool) {
+func (d ModalInteractionData) TextInputComponent(customID string) (TextInputComponent, bool) {
 	if component, ok := d.Component(customID); ok {
 		textInputComponent, ok := component.(TextInputComponent)
 		return textInputComponent, ok
@@ -109,14 +109,14 @@ func (d ModalSubmitInteractionData) TextInputComponent(customID string) (TextInp
 	return TextInputComponent{}, false
 }
 
-func (d ModalSubmitInteractionData) OptText(customID string) (string, bool) {
+func (d ModalInteractionData) OptText(customID string) (string, bool) {
 	if textInputComponent, ok := d.TextInputComponent(customID); ok {
 		return textInputComponent.Value, true
 	}
 	return "", false
 }
 
-func (d ModalSubmitInteractionData) Text(customID string) string {
+func (d ModalInteractionData) Text(customID string) string {
 	if text, ok := d.OptText(customID); ok {
 		return text
 	}

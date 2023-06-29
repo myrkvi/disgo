@@ -16,19 +16,8 @@ import (
 	"github.com/disgoorg/disgo/discord"
 )
 
-type (
-	// EventHandlerFunc is used to handle events from Discord's Outgoing Webhooks
-	EventHandlerFunc func(event gateway.Event)
-
-	// RespondFunc is used to respond to Discord's Outgoing Webhooks
-	RespondFunc func(response discord.InteractionResponse) error
-)
-
-// EventInteractionCreate is the event payload when an interaction is created via Discord's Outgoing Webhooks
-type EventInteractionCreate struct {
-	gateway.EventInteractionCreate
-	Respond RespondFunc `json:"-"`
-}
+// EventHandlerFunc is used to handle events from Discord's Outgoing Webhooks
+type EventHandlerFunc func(event gateway.Event)
 
 // Server is used for receiving Discord's interactions via Outgoing Webhooks
 type Server interface {
@@ -108,7 +97,7 @@ func HandleInteraction(publicKey PublicKey, logger log.Logger, handleFunc EventH
 		rqData, _ := io.ReadAll(io.TeeReader(r.Body, buff))
 		logger.Trace("received http interaction. body: ", string(rqData))
 
-		var v EventInteractionCreate
+		var v gateway.EventInteractionCreate
 		if err := json.NewDecoder(buff).Decode(&v); err != nil {
 			logger.Error("error while decoding interaction: ", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)

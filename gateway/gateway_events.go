@@ -75,6 +75,7 @@ func (EventChannelCreate) EventType() EventType { return EventTypeChannelCreate 
 
 type EventChannelUpdate struct {
 	discord.GuildChannel
+	OldGuildChannel discord.GuildChannel `json:"-"`
 }
 
 func (e *EventChannelUpdate) UnmarshalJSON(data []byte) error {
@@ -176,6 +177,7 @@ func (EventGuildCreate) EventType() EventType { return EventTypeGuildCreate }
 
 type EventGuildUpdate struct {
 	discord.GatewayGuild
+	OldGuild discord.Guild `json:"-"`
 }
 
 func (EventGuildUpdate) messageData()         {}
@@ -254,9 +256,10 @@ func (EventMessageReactionRemoveAll) messageData()         {}
 func (EventMessageReactionRemoveAll) EventType() EventType { return EventTypeMessageReactionRemoveAll }
 
 type EventChannelPinsUpdate struct {
-	GuildID          *snowflake.ID `json:"guild_id"`
-	ChannelID        snowflake.ID  `json:"channel_id"`
-	LastPinTimestamp *time.Time    `json:"last_pin_timestamp"`
+	GuildID             *snowflake.ID `json:"guild_id"`
+	ChannelID           snowflake.ID  `json:"channel_id"`
+	LastPinTimestamp    *time.Time    `json:"last_pin_timestamp"`
+	OldLastPinTimestamp *time.Time    `json:"-"`
 }
 
 func (EventChannelPinsUpdate) messageData()         {}
@@ -336,6 +339,7 @@ func (EventGuildMemberAdd) EventType() EventType { return EventTypeGuildMemberAd
 
 type EventGuildMemberUpdate struct {
 	discord.Member
+	OldMember discord.Member `json:"-"`
 }
 
 func (EventGuildMemberUpdate) messageData()         {}
@@ -377,6 +381,7 @@ func (EventGuildRoleCreate) EventType() EventType { return EventTypeGuildRoleCre
 type EventGuildRoleDelete struct {
 	GuildID snowflake.ID `json:"guild_id"`
 	RoleID  snowflake.ID `json:"role_id"`
+	Role    discord.Role `json:"-"`
 }
 
 func (EventGuildRoleDelete) messageData()         {}
@@ -385,6 +390,7 @@ func (EventGuildRoleDelete) EventType() EventType { return EventTypeGuildRoleDel
 type EventGuildRoleUpdate struct {
 	GuildID snowflake.ID `json:"guild_id"`
 	Role    discord.Role `json:"role"`
+	OldRole discord.Role `json:"-"`
 }
 
 func (e *EventGuildRoleUpdate) UnmarshalJSON(data []byte) error {
@@ -418,6 +424,7 @@ func (EventGuildScheduledEventCreate) EventType() EventType {
 
 type EventGuildScheduledEventUpdate struct {
 	discord.GuildScheduledEvent
+	OldGuildScheduledEvent discord.GuildScheduledEvent `json:"-"`
 }
 
 func (EventGuildScheduledEventUpdate) messageData() {}
@@ -456,8 +463,12 @@ func (EventGuildScheduledEventUserRemove) EventType() EventType {
 	return EventTypeGuildScheduledEventUserRemove
 }
 
+// RespondFunc is used to respond to Discord's Outgoing Webhooks
+type RespondFunc func(response discord.InteractionResponse) error
+
 type EventInteractionCreate struct {
 	discord.Interaction
+	Respond RespondFunc `json:"-"`
 }
 
 func (e *EventInteractionCreate) UnmarshalJSON(data []byte) error {
@@ -529,6 +540,7 @@ func (EventMessageDeleteBulk) EventType() EventType { return EventTypeMessageDel
 
 type EventPresenceUpdate struct {
 	discord.Presence
+	OldPresence discord.Presence `json:"-"`
 }
 
 func (EventPresenceUpdate) messageData()         {}
@@ -584,6 +596,7 @@ func (EventTypingStart) EventType() EventType { return EventTypeTypingStart }
 
 type EventUserUpdate struct {
 	discord.OAuth2User
+	OldUser discord.OAuth2User `json:"-"`
 }
 
 func (EventUserUpdate) messageData()         {}
@@ -591,7 +604,8 @@ func (EventUserUpdate) EventType() EventType { return EventTypeUserUpdate }
 
 type EventVoiceStateUpdate struct {
 	discord.VoiceState
-	Member discord.Member `json:"member"`
+	Member        discord.Member     `json:"member"`
+	OldVoiceState discord.VoiceState `json:"-"`
 }
 
 func (EventVoiceStateUpdate) messageData()         {}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/gateway"
 )
 
 // New returns a new Router.
@@ -30,14 +30,14 @@ type Mux struct {
 }
 
 // OnEvent is called when a new event is received.
-func (r *Mux) OnEvent(event bot.Event) {
-	e, ok := event.(*events.InteractionCreate)
+func (r *Mux) OnEvent(c *bot.Client, e gateway.Event) {
+	event, ok := e.(gateway.EventInteractionCreate)
 	if !ok {
 		return
 	}
 
 	var path string
-	switch i := e.Interaction.(type) {
+	switch i := event.Interaction.(type) {
 	case discord.ApplicationCommandInteraction:
 		if sci, ok := i.Data.(discord.SlashCommandInteractionData); ok {
 			path = sci.CommandPath()
@@ -48,12 +48,12 @@ func (r *Mux) OnEvent(event bot.Event) {
 		path = i.Data.CommandPath()
 	case discord.ComponentInteraction:
 		path = i.Data.CustomID()
-	case discord.ModalSubmitInteraction:
+	case discord.ModalInteraction:
 		path = i.Data.CustomID
 	}
 
-	if err := r.Handle(path, make(map[string]string), e); err != nil {
-		event.Client().Logger().Errorf("error handling interaction: %v\n", err)
+	if err := r.Handle(path, c, event, make(map[string]string)); err != nil {
+		c.Logger.Errorf("error handling interaction: %v\n", err)
 	}
 }
 
@@ -83,13 +83,13 @@ func (r *Mux) Match(path string, t discord.InteractionType) bool {
 }
 
 // Handle handles the given interaction event.
-func (r *Mux) Handle(path string, variables map[string]string, e *events.InteractionCreate) error {
-	handlerChain := func(event *events.InteractionCreate) error {
-		path = parseVariables(path, r.pattern, variables)
+func (r *Mux) Handle(path string, c *bot.Client, e gateway.EventInteractionCreate, vars map[string]string) error {
+	handlerChain := func(event gateway.EventInteractionCreate) error {
+		path = parseVariables(path, r.pattern, vars)
 
 		for _, route := range r.routes {
 			if route.Match(path, e.Type()) {
-				return route.Handle(path, variables, e)
+				return route.Handle(path, c, e, vars)
 			}
 		}
 		if r.notFoundHandler != nil {
@@ -180,7 +180,7 @@ func (r *Mux) Modal(pattern string, h ModalHandler) {
 	r.handle(&handlerHolder[ModalHandler]{
 		pattern: pattern,
 		handler: h,
-		t:       discord.InteractionTypeModalSubmit,
+		t:       discord.InteractionTypeModal,
 	})
 }
 
@@ -207,7 +207,7 @@ func splitPath(path string) []string {
 	return strings.FieldsFunc(path, func(r rune) bool { return r == '/' })
 }
 
-func parseVariables(path string, pattern string, variables map[string]string) string {
+func parseVariables(path string, pattern string, vars map[string]string) string {
 	if pattern == "" {
 		return path
 	}
@@ -217,7 +217,7 @@ func parseVariables(path string, pattern string, variables map[string]string) st
 	for i := range patternParts {
 		path = strings.TrimPrefix(path, "/"+parts[i])
 		if strings.HasPrefix(patternParts[i], "{") && strings.HasSuffix(patternParts[i], "}") {
-			variables[patternParts[i][1:len(patternParts[i])-1]] = parts[i]
+			vars[patternParts[i][1:len(patternParts[i])-1]] = parts[i]
 		}
 	}
 	return path

@@ -8,9 +8,9 @@ import (
 	"github.com/disgoorg/disgo/gateway"
 )
 
-// ShardManager manages multiple gateway.Gateway connections.
+// Manager manages multiple gateway.Gateway connections.
 // For more information on sharding see: https://discord.com/developers/docs/topics/gateway#sharding
-type ShardManager interface {
+type Manager interface {
 	// Open opens all configured shards.
 	Open(ctx context.Context)
 	// Close closes all shards.
@@ -23,10 +23,10 @@ type ShardManager interface {
 	CloseShard(ctx context.Context, shardID int)
 
 	// ShardByGuildID returns the gateway.Gateway for the shard that contains the given guild.
-	ShardByGuildID(guildId snowflake.ID) gateway.Gateway
+	ShardByGuildID(guildId snowflake.ID) (gateway.Gateway, bool)
 
 	// Shard returns the gateway.Gateway for the given shard ID.
-	Shard(shardID int) gateway.Gateway
+	Shard(shardID int) (gateway.Gateway, bool)
 
 	// Shards returns a copy of all shards as a map.
 	Shards() map[int]gateway.Gateway

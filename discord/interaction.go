@@ -17,7 +17,7 @@ const (
 	InteractionTypeApplicationCommand
 	InteractionTypeComponent
 	InteractionTypeAutocomplete
-	InteractionTypeModalSubmit
+	InteractionTypeModal
 )
 
 type rawInteraction struct {
@@ -93,8 +93,8 @@ func UnmarshalInteraction(data []byte) (Interaction, error) {
 		err = json.Unmarshal(data, &v)
 		interaction = v
 
-	case InteractionTypeModalSubmit:
-		v := ModalSubmitInteraction{}
+	case InteractionTypeModal:
+		v := ModalInteraction{}
 		err = json.Unmarshal(data, &v)
 		interaction = v
 

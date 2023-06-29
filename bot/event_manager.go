@@ -4,13 +4,14 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 )
 
 var _ EventManager = (*eventManagerImpl)(nil)
 
 // NewEventManager returns a new EventManager with the EventManagerConfigOpt(s) applied.
-func NewEventManager(client Client, opts ...EventManagerConfigOpt) EventManager {
+func NewEventManager(client *Client, opts ...EventManagerConfigOpt) EventManager {
 	config := DefaultEventManagerConfig()
 	config.Apply(opts)
 
@@ -34,21 +35,28 @@ type EventManager interface {
 
 // EventListener is used to create new EventListener to listen to events
 type EventListener interface {
-	OnEvent(event gateway.Event)
+	OnEvent(c *Client, e gateway.Event)
 }
 
-// NewListenerFunc returns a new EventListener for the given func(e E)
-func NewListenerFunc[E gateway.Event](f func(e E)) EventListener {
+// EventListenerFunc is a helper type to create a EventListener from a func(c *Client, e gateway.Event)
+type EventListenerFunc func(c *Client, e gateway.Event)
+
+func (f EventListenerFunc) OnEvent(c *Client, e gateway.Event) {
+	f(c, e)
+}
+
+// NewListenerFunc returns a new EventListener for the given func(c *Client, e E)
+func NewListenerFunc[E gateway.Event](f func(c *Client, e E)) EventListener {
 	return &listenerFunc[E]{f: f}
 }
 
 type listenerFunc[E gateway.Event] struct {
-	f func(e E)
+	f func(c *Client, e E)
 }
 
-func (l *listenerFunc[E]) OnEvent(e gateway.Event) {
+func (l *listenerFunc[E]) OnEvent(c *Client, e gateway.Event) {
 	if event, ok := e.(E); ok {
-		l.f(event)
+		l.f(c, event)
 	}
 }
 
@@ -61,45 +69,53 @@ type listenerChan[E gateway.Event] struct {
 	c chan<- E
 }
 
-func (l *listenerChan[E]) OnEvent(e gateway.Event) {
+func (l *listenerChan[E]) OnEvent(_ *Client, e gateway.Event) {
 	if event, ok := e.(E); ok {
 		l.c <- event
 	}
 }
 
 type eventManagerImpl struct {
-	client          Client
-	eventListenerMu sync.Mutex
+	client          *Client
+	eventListenerMu sync.RWMutex
 	config          EventManagerConfig
 }
 
-func (e *eventManagerImpl) HandleEvent(event gateway.Event) {
+func (m *eventManagerImpl) HandleEvent(event gateway.Event) {
+	// set respond function if not set to handle http & gateway interactions the same way
+	if e, ok := event.(gateway.EventInteractionCreate); ok && e.Respond == nil {
+		e.Respond = func(response discord.InteractionResponse) error {
+			return m.client.Rest.CreateInteractionResponse(e.Interaction.ID(), e.Interaction.Token(), response)
+		}
+		event = e
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
-			e.config.Logger.Errorf("recovered from panic in event listener: %+v\nstack: %s", r, string(debug.Stack()))
+			m.config.Logger.Errorf("recovered from panic in event listener: %+v\nstack: %s", r, string(debug.Stack()))
 			return
 		}
 	}()
-	e.eventListenerMu.Lock()
-	defer e.eventListenerMu.Unlock()
-	for i := range e.config.EventListeners {
-		e.config.EventListeners[i].OnEvent(event)
+	m.eventListenerMu.RLock()
+	defer m.eventListenerMu.RUnlock()
+	for i := range m.config.EventListeners {
+		m.config.EventListeners[i].OnEvent(m.client, event)
 	}
 }
 
-func (e *eventManagerImpl) AddEventListeners(listeners ...EventListener) {
-	e.eventListenerMu.Lock()
-	defer e.eventListenerMu.Unlock()
-	e.config.EventListeners = append(e.config.EventListeners, listeners...)
+func (m *eventManagerImpl) AddEventListeners(listeners ...EventListener) {
+	m.eventListenerMu.Lock()
+	defer m.eventListenerMu.Unlock()
+	m.config.EventListeners = append(m.config.EventListeners, listeners...)
 }
 
-func (e *eventManagerImpl) RemoveEventListeners(listeners ...EventListener) {
-	e.eventListenerMu.Lock()
-	defer e.eventListenerMu.Unlock()
+func (m *eventManagerImpl) RemoveEventListeners(listeners ...EventListener) {
+	m.eventListenerMu.Lock()
+	defer m.eventListenerMu.Unlock()
 	for _, listener := range listeners {
-		for i, l := range e.config.EventListeners {
+		for i, l := range m.config.EventListeners {
 			if l == listener {
-				e.config.EventListeners = append(e.config.EventListeners[:i], e.config.EventListeners[i+1:]...)
+				m.config.EventListeners = append(m.config.EventListeners[:i], m.config.EventListeners[i+1:]...)
 				break
 			}
 		}

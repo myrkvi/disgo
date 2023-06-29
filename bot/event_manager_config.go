@@ -42,8 +42,8 @@ func WithListeners(listeners ...EventListener) EventManagerConfigOpt {
 	}
 }
 
-// WithListenerFunc adds the given func(e E) to the EventManagerConfig.
-func WithListenerFunc[E gateway.Event](f func(e E)) EventManagerConfigOpt {
+// WithListenerFunc adds the given func(c *Client, e E) to the EventManagerConfig.
+func WithListenerFunc[E gateway.Event](f func(c *Client, e E)) EventManagerConfigOpt {
 	return WithListeners(NewListenerFunc(f))
 }
 

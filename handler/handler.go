@@ -21,22 +21,22 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/snowflake/v2"
 
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/rest"
 )
 
 // SyncCommands sets the given commands for the given guilds or globally if no guildIDs are empty. It will return on the first error for multiple guilds.
-func SyncCommands(client bot.Client, commands []discord.ApplicationCommandCreate, guildIDs []snowflake.ID, opts ...rest.RequestOpt) error {
+func SyncCommands(client *bot.Client, commands []discord.ApplicationCommandCreate, guildIDs []snowflake.ID, opts ...rest.RequestOpt) error {
 	if len(guildIDs) == 0 {
-		_, err := client.Rest().SetGlobalCommands(client.ApplicationID(), commands, opts...)
+		_, err := client.Rest.SetGlobalCommands(client.ApplicationID, commands, opts...)
 		return err
 	}
 	for _, guildID := range guildIDs {
-		_, err := client.Rest().SetGuildCommands(client.ApplicationID(), guildID, commands, opts...)
+		_, err := client.Rest.SetGuildCommands(client.ApplicationID, guildID, commands, opts...)
 		if err != nil {
 			return err
 		}
@@ -69,45 +69,45 @@ func (h *handlerHolder[T]) Match(path string, t discord.InteractionType) bool {
 	return true
 }
 
-func (h *handlerHolder[T]) Handle(path string, variables map[string]string, event *events.InteractionCreate) error {
-	parseVariables(path, h.pattern, variables)
+func (h *handlerHolder[T]) Handle(path string, c *bot.Client, event gateway.EventInteractionCreate, vars map[string]string) error {
+	parseVariables(path, h.pattern, vars)
 
 	switch handler := any(h.handler).(type) {
 	case CommandHandler:
 		return handler(&CommandEvent{
-			ApplicationCommandInteractionCreate: &events.ApplicationCommandInteractionCreate{
-				GenericEvent:                  event.GenericEvent,
+			EventApplicationCommandInteractionCreate: bot.EventApplicationCommandInteractionCreate{
 				ApplicationCommandInteraction: event.Interaction.(discord.ApplicationCommandInteraction),
 				Respond:                       event.Respond,
 			},
-			Variables: variables,
+			Client: c,
+			Vars:   vars,
 		})
 	case AutocompleteHandler:
 		return handler(&AutocompleteEvent{
-			AutocompleteInteractionCreate: &events.AutocompleteInteractionCreate{
-				GenericEvent:            event.GenericEvent,
+			EventAutocompleteInteractionCreate: bot.EventAutocompleteInteractionCreate{
 				AutocompleteInteraction: event.Interaction.(discord.AutocompleteInteraction),
 				Respond:                 event.Respond,
 			},
-			Variables: variables,
+			Client: c,
+			Vars:   vars,
 		})
 	case ComponentHandler:
 		return handler(&ComponentEvent{
-			ComponentInteractionCreate: &events.ComponentInteractionCreate{
-				GenericEvent:         event.GenericEvent,
+			EventComponentInteractionCreate: bot.EventComponentInteractionCreate{
 				ComponentInteraction: event.Interaction.(discord.ComponentInteraction),
 				Respond:              event.Respond,
 			},
-			Variables: variables,
+			Client: c,
+			Vars:   vars,
 		})
 	case ModalHandler:
 		return handler(&ModalEvent{
-			ModalSubmitInteractionCreate: &events.ModalSubmitInteractionCreate{
-				GenericEvent:           event.GenericEvent,
-				ModalSubmitInteraction: event.Interaction.(discord.ModalSubmitInteraction),
-				Respond:                event.Respond,
+			EventModalInteractionCreate: bot.EventModalInteractionCreate{
+				ModalInteraction: event.Interaction.(discord.ModalInteraction),
+				Respond:          event.Respond,
 			},
-			Variables: variables,
+			Client: c,
+			Vars:   vars,
 		})
 	}
 	return errors.New("unknown handler type")
