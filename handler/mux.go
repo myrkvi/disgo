@@ -52,7 +52,11 @@ func (r *Mux) OnEvent(c *bot.Client, e gateway.Event) {
 		path = i.Data.CustomID
 	}
 
-	if err := r.Handle(path, c, event, make(map[string]string)); err != nil {
+	if err := r.Handle(path, &InteractionEvent{
+		EventInteractionCreate: event,
+		Client:                 c,
+		Vars:                   map[string]string{},
+	}); err != nil {
 		c.Logger.Errorf("error handling interaction: %v\n", err)
 	}
 }
@@ -83,13 +87,13 @@ func (r *Mux) Match(path string, t discord.InteractionType) bool {
 }
 
 // Handle handles the given interaction event.
-func (r *Mux) Handle(path string, c *bot.Client, e gateway.EventInteractionCreate, vars map[string]string) error {
-	handlerChain := func(event gateway.EventInteractionCreate) error {
-		path = parseVariables(path, r.pattern, vars)
+func (r *Mux) Handle(path string, e *InteractionEvent) error {
+	handlerChain := func(event *InteractionEvent) error {
+		path = parseVariables(path, r.pattern, e.Vars)
 
 		for _, route := range r.routes {
 			if route.Match(path, e.Type()) {
-				return route.Handle(path, c, e, vars)
+				return route.Handle(path, e)
 			}
 		}
 		if r.notFoundHandler != nil {

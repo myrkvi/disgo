@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/gateway"
 )
 
 type (
@@ -11,7 +10,7 @@ type (
 	AutocompleteHandler func(e *AutocompleteEvent) error
 	ComponentHandler    func(e *ComponentEvent) error
 	ModalHandler        func(e *ModalEvent) error
-	NotFoundHandler     func(e gateway.EventInteractionCreate) error
+	NotFoundHandler     func(e *InteractionEvent) error
 )
 
 var (
@@ -28,7 +27,7 @@ type Route interface {
 	Match(path string, t discord.InteractionType) bool
 
 	// Handle handles the given interaction event.
-	Handle(path string, c *bot.Client, e gateway.EventInteractionCreate, vars map[string]string) error
+	Handle(path string, e *InteractionEvent) error
 }
 
 // Router provides with the core routing functionality.

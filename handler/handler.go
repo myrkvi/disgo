@@ -21,7 +21,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/snowflake/v2"
 
 	"github.com/disgoorg/disgo/bot"
@@ -69,45 +68,45 @@ func (h *handlerHolder[T]) Match(path string, t discord.InteractionType) bool {
 	return true
 }
 
-func (h *handlerHolder[T]) Handle(path string, c *bot.Client, event gateway.EventInteractionCreate, vars map[string]string) error {
-	parseVariables(path, h.pattern, vars)
+func (h *handlerHolder[T]) Handle(path string, e *InteractionEvent) error {
+	parseVariables(path, h.pattern, e.Vars)
 
 	switch handler := any(h.handler).(type) {
 	case CommandHandler:
 		return handler(&CommandEvent{
 			EventApplicationCommandInteractionCreate: bot.EventApplicationCommandInteractionCreate{
-				ApplicationCommandInteraction: event.Interaction.(discord.ApplicationCommandInteraction),
-				Respond:                       event.Respond,
+				ApplicationCommandInteraction: e.Interaction.(discord.ApplicationCommandInteraction),
+				Respond:                       e.Respond,
 			},
-			Client: c,
-			Vars:   vars,
+			Client: e.Client,
+			Vars:   e.Vars,
 		})
 	case AutocompleteHandler:
 		return handler(&AutocompleteEvent{
 			EventAutocompleteInteractionCreate: bot.EventAutocompleteInteractionCreate{
-				AutocompleteInteraction: event.Interaction.(discord.AutocompleteInteraction),
-				Respond:                 event.Respond,
+				AutocompleteInteraction: e.Interaction.(discord.AutocompleteInteraction),
+				Respond:                 e.Respond,
 			},
-			Client: c,
-			Vars:   vars,
+			Client: e.Client,
+			Vars:   e.Vars,
 		})
 	case ComponentHandler:
 		return handler(&ComponentEvent{
 			EventComponentInteractionCreate: bot.EventComponentInteractionCreate{
-				ComponentInteraction: event.Interaction.(discord.ComponentInteraction),
-				Respond:              event.Respond,
+				ComponentInteraction: e.Interaction.(discord.ComponentInteraction),
+				Respond:              e.Respond,
 			},
-			Client: c,
-			Vars:   vars,
+			Client: e.Client,
+			Vars:   e.Vars,
 		})
 	case ModalHandler:
 		return handler(&ModalEvent{
 			EventModalInteractionCreate: bot.EventModalInteractionCreate{
-				ModalInteraction: event.Interaction.(discord.ModalInteraction),
-				Respond:          event.Respond,
+				ModalInteraction: e.Interaction.(discord.ModalInteraction),
+				Respond:          e.Respond,
 			},
-			Client: c,
-			Vars:   vars,
+			Client: e.Client,
+			Vars:   e.Vars,
 		})
 	}
 	return errors.New("unknown handler type")

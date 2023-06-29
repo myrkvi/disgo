@@ -34,7 +34,13 @@ func (e *Message) UnmarshalJSON(data []byte) error {
 
 	switch v.Op {
 	case OpcodeDispatch:
-		messageData, err = UnmarshalEventData(v.D, v.T)
+		var event Event
+		event, err = UnmarshalEventData(v.D, v.T)
+		if err == nil {
+			messageData = MessageDataEvent{
+				Event: event,
+			}
+		}
 
 	case OpcodeHeartbeat:
 		var d MessageDataHeartbeat
@@ -421,6 +427,12 @@ func UnmarshalEventData(data []byte, eventType EventType) (Event, error) {
 type MessageDataUnknown json.RawMessage
 
 func (MessageDataUnknown) messageData() {}
+
+type MessageDataEvent struct {
+	Event
+}
+
+func (MessageDataEvent) messageData() {}
 
 // MessageDataHeartbeat is used to ensure the websocket connection remains open, and disconnect if not.
 type MessageDataHeartbeat int

@@ -4,9 +4,6 @@ import (
 	"context"
 
 	"github.com/disgoorg/disgo"
-	"github.com/disgoorg/log"
-	"github.com/disgoorg/snowflake/v2"
-
 	"github.com/disgoorg/disgo/cache"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
@@ -14,6 +11,8 @@ import (
 	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/disgoorg/disgo/voice"
+	"github.com/disgoorg/log"
+	"github.com/disgoorg/snowflake/v2"
 )
 
 // New creates a new bot.Client with the provided token & bot.ConfigOpt(s)

@@ -82,14 +82,45 @@ type eventManagerImpl struct {
 }
 
 func (m *eventManagerImpl) HandleEvent(event gateway.Event) {
-	// set respond function if not set to handle http & gateway interactions the same way
-	if e, ok := event.(gateway.EventInteractionCreate); ok && e.Respond == nil {
-		e.Respond = func(response discord.InteractionResponse) error {
-			return m.client.Rest.CreateInteractionResponse(e.Interaction.ID(), e.Interaction.Token(), response)
+
+	switch e := event.(type) {
+	case gateway.EventInteractionCreate:
+		// set respond function if not set to handle http & gateway interactions the same way
+		if e.Respond == nil {
+			e.Respond = func(response discord.InteractionResponse) error {
+				return m.client.Rest.CreateInteractionResponse(e.Interaction.ID(), e.Interaction.Token(), response)
+			}
+			event = e
 		}
-		event = e
+
+		switch i := e.Interaction.(type) {
+		case discord.ApplicationCommandInteraction:
+			m.DispatchEvent(EventApplicationCommandInteractionCreate{
+				ApplicationCommandInteraction: i,
+				Respond:                       e.Respond,
+			})
+		case discord.AutocompleteInteraction:
+			m.DispatchEvent(EventAutocompleteInteractionCreate{
+				AutocompleteInteraction: i,
+				Respond:                 e.Respond,
+			})
+		case discord.ComponentInteraction:
+			m.DispatchEvent(EventComponentInteractionCreate{
+				ComponentInteraction: i,
+				Respond:              e.Respond,
+			})
+		case discord.ModalInteraction:
+			m.DispatchEvent(EventModalInteractionCreate{
+				ModalInteraction: i,
+				Respond:          e.Respond,
+			})
+		}
 	}
 
+	m.DispatchEvent(event)
+}
+
+func (m *eventManagerImpl) DispatchEvent(event gateway.Event) {
 	defer func() {
 		if r := recover(); r != nil {
 			m.config.Logger.Errorf("recovered from panic in event listener: %+v\nstack: %s", r, string(debug.Stack()))
