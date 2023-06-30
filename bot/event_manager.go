@@ -6,6 +6,7 @@ import (
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/disgo/rest"
 )
 
 var _ EventManager = (*eventManagerImpl)(nil)
@@ -87,11 +88,11 @@ func (m *eventManagerImpl) HandleEvent(event gateway.Event) {
 	case gateway.EventInteractionCreate:
 		// set respond function if not set to handle http & gateway interactions the same way
 		if e.Respond == nil {
-			e.Respond = func(responseType discord.InteractionResponseType, data discord.InteractionResponseData) error {
+			e.Respond = func(responseType discord.InteractionResponseType, data discord.InteractionResponseData, opts ...rest.RequestOpt) error {
 				return m.client.Rest.CreateInteractionResponse(e.Interaction.ID(), e.Interaction.Token(), discord.InteractionResponse{
 					Type: responseType,
 					Data: data,
-				})
+				}, opts...)
 			}
 			m.DispatchEvent(e)
 		}

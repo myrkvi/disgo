@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/json"
 	"github.com/disgoorg/log"
 
@@ -116,7 +117,7 @@ func HandleInteraction(publicKey PublicKey, logger log.Logger, handleFunc EventH
 			mu     sync.Mutex
 		)
 
-		v.Respond = func(responseType discord.InteractionResponseType, data discord.InteractionResponseData) error {
+		v.Respond = func(responseType discord.InteractionResponseType, data discord.InteractionResponseData, opts ...rest.RequestOpt) error {
 			mu.Lock()
 			defer mu.Unlock()
 
