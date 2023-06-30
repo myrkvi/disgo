@@ -11,14 +11,11 @@ import (
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
 )
 
-var (
-	token = os.Getenv("disgo_token")
-)
+var token = os.Getenv("disgo_token")
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -26,7 +23,7 @@ func main() {
 	log.Info("starting example...")
 	log.Info("disgo version: ", disgo.Version)
 
-	client, err := disgo.New(token,
+	client, err := bot.New(token,
 		bot.WithShardManagerConfigOpts(
 			sharding.WithShardIDs(0, 1),
 			sharding.WithShardCount(2),
@@ -36,15 +33,12 @@ func main() {
 				gateway.WithCompress(true),
 			),
 		),
-		bot.WithEventListeners(&events.ListenerAdapter{
-			OnMessageCreate: onMessageCreate,
-			OnGuildReady: func(event *events.GuildReady) {
-				log.Infof("guild %s ready", event.GuildID)
-			},
-			OnGuildsReady: func(event *events.GuildsReady) {
-				log.Infof("guilds on shard %d ready", event.ShardID)
-			},
-		}),
+		bot.WithEventListeners(
+			bot.NewListenerFunc(onMessageCreate),
+			bot.NewListenerFunc(func(c *bot.Client, e gateway.EventReady) {
+				log.Infof("shard [%d/%d] ready", e.Shard[0], e.Shard[1])
+			}),
+		),
 	)
 	if err != nil {
 		log.Fatalf("error while building disgo: %s", err)
@@ -62,9 +56,9 @@ func main() {
 	<-s
 }
 
-func onMessageCreate(event *events.MessageCreate) {
-	if event.Message.Author.Bot {
+func onMessageCreate(c *bot.Client, e gateway.EventMessageCreate) {
+	if e.Message.Author.Bot {
 		return
 	}
-	_, _ = event.Client().Rest().CreateMessage(event.ChannelID, discord.NewMessageCreateBuilder().SetContent(event.Message.Content).Build())
+	_, _ = c.Rest.CreateMessage(e.ChannelID, discord.NewMessageCreateBuilder().SetContent(e.Message.Content).Build())
 }

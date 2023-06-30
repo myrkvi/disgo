@@ -116,7 +116,7 @@ func HandleInteraction(publicKey PublicKey, logger log.Logger, handleFunc EventH
 			mu     sync.Mutex
 		)
 
-		v.Respond = func(response discord.InteractionResponse) error {
+		v.Respond = func(responseType discord.InteractionResponseType, data discord.InteractionResponseData) error {
 			mu.Lock()
 			defer mu.Unlock()
 
@@ -129,7 +129,10 @@ func HandleInteraction(publicKey PublicKey, logger log.Logger, handleFunc EventH
 			}
 
 			status = replyStatusReplied
-			responseChannel <- response
+			responseChannel <- discord.InteractionResponse{
+				Type: responseType,
+				Data: data,
+			}
 			// wait if we get any error while processing the response
 			return <-errorChannel
 		}

@@ -8,10 +8,8 @@ import (
 
 	"github.com/disgoorg/log"
 
-	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 )
 
@@ -19,7 +17,7 @@ func main() {
 	log.SetLevel(log.LevelDebug)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	client, err := disgo.New(os.Getenv("disgo_token"),
+	client, err := bot.New(os.Getenv("disgo_token"),
 		bot.WithGatewayConfigOpts(
 			gateway.WithIntents(
 				gateway.IntentGuildMessages,
@@ -44,17 +42,17 @@ func main() {
 	<-s
 }
 
-func onMessageCreate(event *events.MessageCreate) {
-	if event.Message.Author.Bot {
+func onMessageCreate(c *bot.Client, e gateway.EventMessageCreate) {
+	if e.Message.Author.Bot {
 		return
 	}
 	var message string
-	if event.Message.Content == "ping" {
+	if e.Message.Content == "ping" {
 		message = "pong"
-	} else if event.Message.Content == "pong" {
+	} else if e.Message.Content == "pong" {
 		message = "ping"
 	}
 	if message != "" {
-		_, _ = event.Client().Rest().CreateMessage(event.ChannelID, discord.NewMessageCreateBuilder().SetContent(message).Build())
+		_, _ = c.Rest.CreateMessage(e.ChannelID, discord.NewMessageCreateBuilder().SetContent(message).Build())
 	}
 }

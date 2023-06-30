@@ -87,10 +87,13 @@ func (m *eventManagerImpl) HandleEvent(event gateway.Event) {
 	case gateway.EventInteractionCreate:
 		// set respond function if not set to handle http & gateway interactions the same way
 		if e.Respond == nil {
-			e.Respond = func(response discord.InteractionResponse) error {
-				return m.client.Rest.CreateInteractionResponse(e.Interaction.ID(), e.Interaction.Token(), response)
+			e.Respond = func(responseType discord.InteractionResponseType, data discord.InteractionResponseData) error {
+				return m.client.Rest.CreateInteractionResponse(e.Interaction.ID(), e.Interaction.Token(), discord.InteractionResponse{
+					Type: responseType,
+					Data: data,
+				})
 			}
-			event = e
+			m.DispatchEvent(e)
 		}
 
 		switch i := e.Interaction.(type) {
@@ -115,9 +118,9 @@ func (m *eventManagerImpl) HandleEvent(event gateway.Event) {
 				Respond:          e.Respond,
 			})
 		}
+	default:
+		m.DispatchEvent(event)
 	}
-
-	m.DispatchEvent(event)
 }
 
 func (m *eventManagerImpl) DispatchEvent(event gateway.Event) {

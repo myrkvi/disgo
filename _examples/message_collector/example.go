@@ -14,20 +14,17 @@ import (
 	"github.com/disgoorg/log"
 
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 )
 
-var (
-	token = os.Getenv("disgo_token")
-)
+var token = os.Getenv("disgo_token")
 
 func main() {
 	log.SetLevel(log.LevelDebug)
 	log.Info("starting example...")
 	log.Infof("disgo version: %s", disgo.Version)
 
-	client, err := disgo.New(token,
+	client, err := bot.New(token,
 		bot.WithGatewayConfigOpts(gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildMessages, gateway.IntentDirectMessages, gateway.IntentMessageContent)),
 		bot.WithEventListenerFunc(onMessageCreate),
 	)
@@ -47,14 +44,14 @@ func main() {
 	<-s
 }
 
-func onMessageCreate(event *events.MessageCreate) {
-	if event.Message.Author.Bot || event.Message.Author.System {
+func onMessageCreate(c *bot.Client, e gateway.EventMessageCreate) {
+	if e.Message.Author.Bot || e.Message.Author.System {
 		return
 	}
-	if event.Message.Content == "start" {
+	if e.Message.Content == "start" {
 		go func() {
-			ch, cls := bot.NewEventCollector(event.Client(), func(event2 *events.MessageCreate) bool {
-				return event.ChannelID == event2.ChannelID && event.Message.Author.ID == event2.Message.Author.ID && event2.Message.Content != ""
+			ch, cls := bot.NewEventCollector(c, func(e2 gateway.EventMessageCreate) bool {
+				return e.ChannelID == e2.ChannelID && e.Message.Author.ID == e2.Message.Author.ID && e2.Message.Content != ""
 			})
 			defer cls()
 			i := 1
@@ -64,14 +61,14 @@ func onMessageCreate(event *events.MessageCreate) {
 			for {
 				select {
 				case <-ctx.Done():
-					_, _ = event.Client().Rest().CreateMessage(event.ChannelID, discord.NewMessageCreateBuilder().SetContent("cancelled").Build())
+					_, _ = c.Rest.CreateMessage(e.ChannelID, discord.NewMessageCreateBuilder().SetContent("cancelled").Build())
 					return
 
 				case messageEvent := <-ch:
 					str += strconv.Itoa(i) + ". " + messageEvent.Message.Content + "\n\n"
 
 					if i == 3 {
-						_, _ = event.Client().Rest().CreateMessage(messageEvent.ChannelID, discord.NewMessageCreateBuilder().SetContent(str).Build())
+						_, _ = c.Rest.CreateMessage(messageEvent.ChannelID, discord.NewMessageCreateBuilder().SetContent(str).Build())
 						return
 					}
 					i++

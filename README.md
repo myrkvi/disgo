@@ -73,14 +73,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 )
 
 func main() {
-	client, err := disgo.New("token",
+	client, err := bot.New("token",
 		// set gateway options
 		bot.WithGatewayConfigOpts(
 			// set enabled intents
@@ -91,7 +89,7 @@ func main() {
 			),
 		),
 		// add event listeners
-		bot.WithEventListenerFunc(func(e *events.MessageCreate) {
+		bot.WithEventListenerFunc(func(c *bot.Client, e gateway.EventMessageCreate) {
 			// event code here
 		}),
 	)

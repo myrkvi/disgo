@@ -6,15 +6,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/disgoorg/log"
-	"github.com/disgoorg/snowflake/v2"
-	"github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
-
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/httpserver"
+	"github.com/disgoorg/log"
+	"github.com/disgoorg/snowflake/v2"
+	"github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 )
 
 var (
@@ -52,7 +50,7 @@ func main() {
 		return ed25519.Verify(publicKey, message, sig)
 	}
 
-	client, err := disgo.New(token,
+	client, err := bot.New(token,
 		bot.WithHTTPServerConfigOpts(publicKey,
 			httpserver.WithURL("/interactions/callback"),
 			httpserver.WithAddress(":80"),
@@ -66,7 +64,7 @@ func main() {
 
 	defer client.Close(context.TODO())
 
-	if _, err = client.Rest().SetGuildCommands(client.ApplicationID(), guildID, commands); err != nil {
+	if _, err = client.Rest.SetGuildCommands(client.ApplicationID, guildID, commands); err != nil {
 		log.Fatal("error while registering commands: ", err)
 	}
 
@@ -80,15 +78,15 @@ func main() {
 	<-s
 }
 
-func commandListener(event *events.ApplicationCommandInteractionCreate) {
-	data := event.SlashCommandInteractionData()
+func commandListener(c *bot.Client, e bot.EventApplicationCommandInteractionCreate) {
+	data := e.SlashCommandInteractionData()
 	if data.CommandName() == "say" {
-		if err := event.CreateMessage(discord.NewMessageCreateBuilder().
+		if err := e.CreateMessage(discord.NewMessageCreateBuilder().
 			SetContent(data.String("message")).
 			SetEphemeral(data.Bool("ephemeral")).
 			Build(),
 		); err != nil {
-			event.Client().Logger().Error("error on sending response: ", err)
+			c.Logger.Error("error on sending response: ", err)
 		}
 	}
 }

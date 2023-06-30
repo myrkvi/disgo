@@ -8,12 +8,9 @@ import (
 
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
-	"github.com/disgoorg/disgo/events"
-
-	"github.com/disgoorg/log"
-
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/log"
 )
 
 var (
@@ -25,23 +22,23 @@ func main() {
 	log.Info("starting example...")
 	log.Infof("disgo version: %s", disgo.Version)
 
-	client, err := disgo.New(token,
+	client, err := bot.New(token,
 		bot.WithGatewayConfigOpts(gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildMessages, gateway.IntentDirectMessages)),
-		bot.WithEventListenerFunc(func(event *events.MessageCreate) {
-			if event.Message.Author.Bot || event.Message.Author.System {
+		bot.WithEventListenerFunc(func(c *bot.Client, e gateway.EventMessageCreate) {
+			if e.Author.Bot || e.Message.Author.System {
 				return
 			}
-			if event.Message.Content == "test" {
-				_, _ = event.Client().Rest().CreateMessage(event.ChannelID, discord.NewMessageCreateBuilder().
+			if e.Message.Content == "test" {
+				_, _ = c.Rest.CreateMessage(e.ChannelID, discord.NewMessageCreateBuilder().
 					AddActionRow(discord.NewDangerButton("danger", "danger")).
-					SetMessageReferenceByID(event.Message.ID).
+					SetMessageReferenceByID(e.Message.ID).
 					Build(),
 				)
 			}
 		}),
-		bot.WithEventListenerFunc(func(event *events.ComponentInteractionCreate) {
-			if event.ButtonInteractionData().CustomID() == "danger" {
-				_ = event.CreateMessage(discord.NewMessageCreateBuilder().SetEphemeral(true).SetContent("Ey that was danger").Build())
+		bot.WithEventListenerFunc(func(c *bot.Client, e bot.EventComponentInteractionCreate) {
+			if e.ButtonInteractionData().CustomID() == "danger" {
+				_ = e.CreateMessage(discord.NewMessageCreateBuilder().SetEphemeral(true).SetContent("Ey that was danger").Build())
 			}
 		}),
 	)

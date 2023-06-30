@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/json"
 	"github.com/disgoorg/snowflake/v2"
 
@@ -425,7 +426,7 @@ func (EventGuildScheduledEventUserRemove) EventType() EventType {
 }
 
 // RespondFunc is used to respond to Discord's Outgoing Webhooks
-type RespondFunc func(response discord.InteractionResponse) error
+type RespondFunc func(responseType discord.InteractionResponseType, data discord.InteractionResponseData, opt ...rest.RequestOpt) error
 
 type EventInteractionCreate struct {
 	discord.Interaction

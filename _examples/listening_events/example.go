@@ -6,13 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/disgoorg/log"
-	"github.com/disgoorg/snowflake/v2"
-
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/log"
+	"github.com/disgoorg/snowflake/v2"
 )
 
 var (
@@ -25,16 +24,16 @@ func main() {
 	log.Info("starting example...")
 	log.Info("disgo version: ", disgo.Version)
 
-	client, err := disgo.New(token,
+	client, err := bot.New(token,
 		bot.WithDefaultGateway(),
 		bot.WithEventListenerFunc(eventListenerFunc),
-		bot.WithEventListenerChan(eventListenerChan()),
-		bot.WithEventListeners(&events.ListenerAdapter{OnMessageCreate: eventListenerFunc}),
+		bot.WithEventListeners(&eventListener{}),
 	)
 	if err != nil {
 		log.Fatal("error while building disgo instance: ", err)
 		return
 	}
+	client.AddEventListeners(bot.NewListenerChan(eventListenerChan(client)))
 
 	defer client.Close(context.TODO())
 
@@ -48,23 +47,36 @@ func main() {
 	<-s
 }
 
-func eventListenerFunc(event *events.MessageCreate) {
-	_, _ = event.Client().Rest().CreateMessage(event.ChannelID, discord.MessageCreate{
+type eventListener struct{}
+
+func (*eventListener) OnEvent(c *bot.Client, e gateway.Event) {
+	switch event := e.(type) {
+	case gateway.EventMessageCreate:
+		if event.Message.Content == "ping" {
+			_, _ = c.Rest.CreateMessage(event.ChannelID, discord.MessageCreate{
+				Content: "pong",
+			})
+		}
+	}
+}
+
+func eventListenerFunc(c *bot.Client, e gateway.EventMessageCreate) {
+	_, _ = c.Rest.CreateMessage(e.ChannelID, discord.MessageCreate{
 		Content: "pong",
 	})
 }
 
-func eventListenerChan() chan<- *events.MessageCreate {
-	c := make(chan *events.MessageCreate)
+func eventListenerChan(c *bot.Client) chan<- gateway.EventMessageCreate {
+	events := make(chan gateway.EventMessageCreate)
 	go func() {
-		defer close(c)
-		for event := range c {
-			if event.Message.Content == "ping" {
-				_, _ = event.Client().Rest().CreateMessage(event.ChannelID, discord.MessageCreate{
+		defer close(events)
+		for e := range events {
+			if e.Message.Content == "ping" {
+				_, _ = c.Rest.CreateMessage(e.ChannelID, discord.MessageCreate{
 					Content: "pong",
 				})
 			}
 		}
 	}()
-	return c
+	return events
 }
