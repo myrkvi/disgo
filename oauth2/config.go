@@ -13,12 +13,12 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Config is the configuration for the OAuth2 client
+// Config is the configuration for the Rest client
 type Config struct {
 	Logger                    log.Logger
 	RestClient                rest.Client
 	RestClientConfigOpts      []rest.ConfigOpt
-	OAuth2                    rest.OAuth2
+	Rest                      rest.OAuth2
 	StateController           StateController
 	StateControllerConfigOpts []StateControllerConfigOpt
 }
@@ -34,43 +34,43 @@ func (c *Config) Apply(opts []ConfigOpt) {
 	if c.RestClient == nil {
 		c.RestClient = rest.NewClient("", append([]rest.ConfigOpt{rest.WithLogger(c.Logger)}, c.RestClientConfigOpts...)...)
 	}
-	if c.OAuth2 == nil {
-		c.OAuth2 = rest.NewOAuth2(c.RestClient)
+	if c.Rest == nil {
+		c.Rest = rest.NewOAuth2(c.RestClient)
 	}
 	if c.StateController == nil {
 		c.StateController = NewStateController(append([]StateControllerConfigOpt{WithStateControllerLogger(c.Logger)}, c.StateControllerConfigOpts...)...)
 	}
 }
 
-// WithLogger applies a custom logger to the OAuth2 client
+// WithLogger applies a custom logger to the Rest client
 func WithLogger(logger log.Logger) ConfigOpt {
 	return func(config *Config) {
 		config.Logger = logger
 	}
 }
 
-// WithRestClient applies a custom rest.Client to the OAuth2 client
+// WithRestClient applies a custom rest.Client to the Rest client
 func WithRestClient(restClient rest.Client) ConfigOpt {
 	return func(config *Config) {
 		config.RestClient = restClient
 	}
 }
 
-// WithRestClientConfigOpts applies rest.ConfigOpt for the rest.Client to the OAuth2 client
+// WithRestClientConfigOpts applies rest.ConfigOpt for the rest.Client to the Rest client
 func WithRestClientConfigOpts(opts ...rest.ConfigOpt) ConfigOpt {
 	return func(config *Config) {
 		config.RestClientConfigOpts = append(config.RestClientConfigOpts, opts...)
 	}
 }
 
-// WithOAuth2 applies a custom rest.OAuth2 to the OAuth2 client
+// WithOAuth2 applies a custom rest.OAuth2 to the Rest client
 func WithOAuth2(oauth2 rest.OAuth2) ConfigOpt {
 	return func(config *Config) {
-		config.OAuth2 = oauth2
+		config.Rest = oauth2
 	}
 }
 
-// WithStateController applies a custom StateController to the OAuth2 client
+// WithStateController applies a custom StateController to the Rest client
 func WithStateController(stateController StateController) ConfigOpt {
 	return func(config *Config) {
 		config.StateController = stateController

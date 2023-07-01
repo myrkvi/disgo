@@ -1,4 +1,4 @@
-package oauth2
+package ttlmap
 
 import (
 	"sync"
@@ -10,8 +10,8 @@ type value struct {
 	insertedAt int64
 }
 
-func newTTLMap(maxTTL time.Duration) *ttlMap {
-	m := &ttlMap{
+func New(maxTTL time.Duration) *Map {
+	m := &Map{
 		maxTTL: maxTTL,
 		m:      map[string]value{},
 	}
@@ -35,19 +35,19 @@ func newTTLMap(maxTTL time.Duration) *ttlMap {
 	return m
 }
 
-type ttlMap struct {
+type Map struct {
 	maxTTL time.Duration
 	m      map[string]value
 	mu     sync.Mutex
 }
 
-func (m *ttlMap) put(k string, v string) {
+func (m *Map) Put(k string, v string) {
 	m.mu.Lock()
 	m.m[k] = value{v, time.Now().Unix()}
 	m.mu.Unlock()
 }
 
-func (m *ttlMap) get(k string) string {
+func (m *Map) Get(k string) string {
 	m.mu.Lock()
 	v, ok := m.m[k]
 	m.mu.Unlock()
@@ -57,7 +57,7 @@ func (m *ttlMap) get(k string) string {
 	return ""
 }
 
-func (m *ttlMap) delete(k string) {
+func (m *Map) Delete(k string) {
 	m.mu.Lock()
 	delete(m.m, k)
 	m.mu.Unlock()

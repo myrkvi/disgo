@@ -1,10 +1,11 @@
 package oauth2
 
-import "github.com/disgoorg/log"
-
-var (
-	_ StateController = (*stateControllerImpl)(nil)
+import (
+	"github.com/disgoorg/disgo/internal/ttlmap"
+	"github.com/disgoorg/log"
 )
+
+var _ StateController = (*defaultStateController)(nil)
 
 // StateController is responsible for generating, storing and validating states.
 type StateController interface {
@@ -20,37 +21,37 @@ func NewStateController(opts ...StateControllerConfigOpt) StateController {
 	config := DefaultStateControllerConfig()
 	config.Apply(opts)
 
-	states := newTTLMap(config.MaxTTL)
+	states := ttlmap.New(config.MaxTTL)
 	for state, url := range config.States {
-		states.put(state, url)
+		states.Put(state, url)
 	}
 
-	return &stateControllerImpl{
+	return &defaultStateController{
 		states:       states,
 		newStateFunc: config.NewStateFunc,
 		logger:       config.Logger,
 	}
 }
 
-type stateControllerImpl struct {
+type defaultStateController struct {
 	logger       log.Logger
-	states       *ttlMap
+	states       *ttlmap.Map
 	newStateFunc func() string
 }
 
-func (c *stateControllerImpl) NewState(redirectURI string) string {
+func (c *defaultStateController) NewState(redirectURI string) string {
 	state := c.newStateFunc()
 	c.logger.Debugf("new state: %s for redirect uri: %s", state, redirectURI)
-	c.states.put(state, redirectURI)
+	c.states.Put(state, redirectURI)
 	return state
 }
 
-func (c *stateControllerImpl) UseState(state string) string {
-	uri := c.states.get(state)
+func (c *defaultStateController) UseState(state string) string {
+	uri := c.states.Get(state)
 	if uri == "" {
 		return ""
 	}
 	c.logger.Debugf("using state: %s for redirect uri: %s", state, uri)
-	c.states.delete(state)
+	c.states.Delete(state)
 	return uri
 }
