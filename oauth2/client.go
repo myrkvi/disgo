@@ -149,7 +149,7 @@ func (c *Client) GetGuilds(session Session, opts ...rest.RequestOpt) ([]discord.
 	if err := checkSession(session, discord.OAuth2ScopeGuilds); err != nil {
 		return nil, err
 	}
-	return c.Rest.GetCurrentUserGuilds(session.AccessToken, 0, 0, 0, opts...)
+	return c.Rest.GetCurrentUserGuilds(session.AccessToken, 0, 0, 0, false, opts...)
 }
 
 // GetConnections returns the discord.Connection(s) the user has connected. This requires the discord.OAuth2ScopeConnections scope in the Session.

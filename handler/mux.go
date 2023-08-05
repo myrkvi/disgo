@@ -170,7 +170,7 @@ func (r *Mux) Autocomplete(pattern string, h AutocompleteHandler) {
 
 // Component registers the given ComponentHandler to the current Router.
 func (r *Mux) Component(pattern string, h ComponentHandler) {
-	checkPatternEmpty(pattern)
+	checkPattern(pattern)
 	r.handle(&handlerHolder[ComponentHandler]{
 		pattern: pattern,
 		handler: h,
@@ -180,7 +180,7 @@ func (r *Mux) Component(pattern string, h ComponentHandler) {
 
 // Modal registers the given ModalHandler to the current Router.
 func (r *Mux) Modal(pattern string, h ModalHandler) {
-	checkPatternEmpty(pattern)
+	checkPattern(pattern)
 	r.handle(&handlerHolder[ModalHandler]{
 		pattern: pattern,
 		handler: h,
@@ -194,14 +194,10 @@ func (r *Mux) NotFound(h NotFoundHandler) {
 	r.notFoundHandler = h
 }
 
-func checkPatternEmpty(pattern string) {
-	if pattern == "" {
+func checkPattern(pattern string) {
+	if len(pattern) == 0 {
 		panic("pattern must not be empty")
 	}
-}
-
-func checkPattern(pattern string) {
-	checkPatternEmpty(pattern)
 	if pattern[0] != '/' {
 		panic("pattern must start with /")
 	}
