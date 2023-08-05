@@ -72,11 +72,8 @@ func onMessageUpdate(c *bot.Client, e gateway.EventMessageUpdate) {
 func onInteraction(c *bot.Client, e gateway.EventInteractionCreate) {
 	switch e.Interaction.(type) {
 	case discord.ApplicationCommandInteraction:
-		_ = e.Respond(discord.InteractionResponse{
-			Type: discord.InteractionResponseTypeCreateMessage,
-			Data: discord.MessageCreate{
-				Content: "Hello World!",
-			},
+		_ = e.Respond(discord.InteractionResponseTypeCreateMessage, discord.MessageCreate{
+			Content: "Hello World!",
 		})
 	case discord.ComponentInteraction:
 
