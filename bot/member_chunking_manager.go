@@ -94,7 +94,9 @@ type MemberChunkingManager interface {
 
 type chunkingRequest struct {
 	sync.Mutex
-	nonce string
+	nonce  string
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	memberChan       chan<- discord.Member
 	memberFilterFunc func(member discord.Member) bool
@@ -120,7 +122,7 @@ func (m *memberChunkingManagerImpl) HandleChunk(payload gateway.EventGuildMember
 	request, ok := m.chunkingRequests[payload.Nonce]
 	m.chunkingRequestsMu.RUnlock()
 	if !ok {
-		m.logger.Debug("received unknown member chunk event: ", slog.Any("payload", payload))
+		m.logger.Debug("received unknown member chunk event", slog.Any("payload", payload))
 		return
 	}
 
@@ -133,7 +135,13 @@ func (m *memberChunkingManagerImpl) HandleChunk(payload gateway.EventGuildMember
 		if request.memberFilterFunc != nil && !request.memberFilterFunc(member) {
 			continue
 		}
-		request.memberChan <- member
+		select {
+		case <-request.ctx.Done():
+			m.logger.Debug("handle chunk member send cancelled")
+			return
+		case request.memberChan <- member:
+		}
+
 	}
 
 	// all chunks sent cleanup
@@ -145,13 +153,14 @@ func (m *memberChunkingManagerImpl) HandleChunk(payload gateway.EventGuildMember
 }
 
 func cleanupRequest(m *memberChunkingManagerImpl, request *chunkingRequest) {
+	request.cancel()
 	close(request.memberChan)
 	m.chunkingRequestsMu.Lock()
 	delete(m.chunkingRequests, request.nonce)
 	m.chunkingRequestsMu.Unlock()
 }
 
-func (m *memberChunkingManagerImpl) requestGuildMembersChan(ctx context.Context, guildID snowflake.ID, query *string, limit *int, userIDs []snowflake.ID, memberFilterFunc func(member discord.Member) bool) (<-chan discord.Member, func(), error) {
+func (m *memberChunkingManagerImpl) requestGuildMembersChan(ctx context.Context, cancel context.CancelFunc, guildID snowflake.ID, query *string, limit *int, userIDs []snowflake.ID, memberFilterFunc func(member discord.Member) bool) (<-chan discord.Member, func(), error) {
 	shard, err := m.client.Shard(guildID)
 	if err != nil {
 		return nil, nil, err
@@ -174,6 +183,8 @@ func (m *memberChunkingManagerImpl) requestGuildMembersChan(ctx context.Context,
 	memberChan := make(chan discord.Member)
 	request := &chunkingRequest{
 		nonce:            nonce,
+		ctx:              ctx,
+		cancel:           cancel,
 		memberChan:       memberChan,
 		memberFilterFunc: memberFilterFunc,
 	}
@@ -198,15 +209,16 @@ func (m *memberChunkingManagerImpl) requestGuildMembersChan(ctx context.Context,
 
 func (m *memberChunkingManagerImpl) requestGuildMembers(ctx context.Context, guildID snowflake.ID, query *string, limit *int, userIDs []snowflake.ID, memberFilterFunc func(member discord.Member) bool) ([]discord.Member, error) {
 	var members []discord.Member
-	memberChan, cls, err := m.requestGuildMembersChan(ctx, guildID, query, limit, userIDs, memberFilterFunc)
+	newCtx, cancel := context.WithCancel(ctx)
+	memberChan, cls, err := m.requestGuildMembersChan(newCtx, cancel, guildID, query, limit, userIDs, memberFilterFunc)
 	if err != nil {
 		return nil, err
 	}
 	for {
 		select {
-		case <-ctx.Done():
+		case <-newCtx.Done():
 			cls()
-			return nil, ctx.Err()
+			return nil, newCtx.Err()
 		case member, ok := <-memberChan:
 			if !ok {
 				return members, nil
@@ -256,21 +268,25 @@ func (m *memberChunkingManagerImpl) RequestMembersChan(guildID snowflake.ID, use
 	if len(userIDs) == 0 {
 		return nil, nil, ErrNoUserIDs
 	}
-	return m.requestGuildMembersChan(context.Background(), guildID, nil, nil, userIDs, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	return m.requestGuildMembersChan(ctx, cancel, guildID, nil, nil, userIDs, nil)
 }
 
 func (m *memberChunkingManagerImpl) RequestMembersWithQueryChan(guildID snowflake.ID, query string, limit int) (<-chan discord.Member, func(), error) {
-	return m.requestGuildMembersChan(context.Background(), guildID, &query, &limit, nil, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	return m.requestGuildMembersChan(ctx, cancel, guildID, &query, &limit, nil, nil)
 }
 
 func (m *memberChunkingManagerImpl) RequestAllMembersChan(guildID snowflake.ID) (<-chan discord.Member, func(), error) {
 	query := ""
 	limit := 0
-	return m.requestGuildMembersChan(context.Background(), guildID, &query, &limit, nil, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	return m.requestGuildMembersChan(ctx, cancel, guildID, &query, &limit, nil, nil)
 }
 
 func (m *memberChunkingManagerImpl) RequestMembersWithFilterChan(guildID snowflake.ID, memberFilterFunc func(member discord.Member) bool) (<-chan discord.Member, func(), error) {
 	query := ""
 	limit := 0
-	return m.requestGuildMembersChan(context.Background(), guildID, &query, &limit, nil, memberFilterFunc)
+	ctx, cancel := context.WithCancel(context.Background())
+	return m.requestGuildMembersChan(ctx, cancel, guildID, &query, &limit, nil, memberFilterFunc)
 }
