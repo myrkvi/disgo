@@ -85,7 +85,7 @@ func (c *clientImpl) retry(endpoint *CompiledEndpoint, rqBody any, rsBody any, t
 				return fmt.Errorf("failed to marshal request body: %w", err)
 			}
 		}
-		c.config.Logger.Debug("new request", slog.String("endpoint", endpoint.URL), slog.String("body", string(rawRqBody)))
+		c.config.Logger.Log(context.Background(), LogLevelTrace, "new request", slog.String("endpoint", endpoint.URL), slog.String("body", string(rawRqBody)))
 	}
 
 	rq, err := http.NewRequest(endpoint.Endpoint.Method, c.config.URL+endpoint.URL, bytes.NewReader(rawRqBody))
@@ -145,7 +145,7 @@ func (c *clientImpl) retry(endpoint *CompiledEndpoint, rqBody any, rsBody any, t
 		if rawRsBody, err = io.ReadAll(rs.Body); err != nil {
 			return fmt.Errorf("error reading response body in rest client: %w", err)
 		}
-		c.config.Logger.Debug("new response", slog.String("endpoint", endpoint.URL), slog.String("code", rs.Status), slog.String("body", string(rawRsBody)))
+		c.config.Logger.Log(context.Background(), LogLevelTrace, "new response", slog.String("endpoint", endpoint.URL), slog.String("code", rs.Status), slog.String("body", string(rawRsBody)))
 	}
 
 	switch rs.StatusCode {

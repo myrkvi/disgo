@@ -186,7 +186,7 @@ func (g *gatewayImpl) send(ctx context.Context, messageType int, data []byte) er
 
 	defer g.config.RateLimiter.Unlock()
 	if g.config.Logger.Enabled(ctx, slog.LevelDebug) {
-		g.config.Logger.Debug("sending gateway command", slog.String("data", string(data)))
+		g.config.Logger.Log(ctx, LogLevelTrace, "sending gateway command", slog.String("data", string(data)))
 	}
 	return g.conn.WriteMessage(messageType, data)
 }
@@ -482,7 +482,7 @@ func (g *gatewayImpl) parseMessage(mt int, r io.Reader) (Message, error) {
 		if err != nil {
 			return Message{}, fmt.Errorf("failed to read message: %w", err)
 		}
-		g.config.Logger.Debug("received gateway message", slog.String("data", string(data)))
+		g.config.Logger.Log(context.Background(), LogLevelTrace, "received gateway message", slog.String("data", string(data)))
 		r = buff
 	}
 

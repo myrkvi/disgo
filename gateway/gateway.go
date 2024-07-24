@@ -2,11 +2,15 @@ package gateway
 
 import (
 	"context"
+	"log/slog"
 	"time"
 )
 
 // Version defines which discord API version disgo should use to connect to discord.
 const Version = 10
+
+// LogLevelTrace is the log slog.Level to log gateway payloads.
+const LogLevelTrace = slog.LevelDebug - 1
 
 // Status is the state that the client is currently in.
 type Status int

@@ -1,5 +1,12 @@
 package rest
 
+import (
+	"log/slog"
+)
+
+// LogLevelTrace is the log slog.Level to log rest requests.
+const LogLevelTrace = slog.LevelDebug - 1
+
 // Rest is a manager for all of disgo's HTTP requests
 type Rest interface {
 	Client
