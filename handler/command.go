@@ -7,6 +7,7 @@ import (
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
+	"github.com/disgoorg/disgo/internal/optparse"
 	"github.com/disgoorg/disgo/rest"
 )
 
@@ -43,4 +44,19 @@ func (e *CommandEvent) UpdateFollowupMessage(messageID snowflake.ID, messageUpda
 
 func (e *CommandEvent) DeleteFollowupMessage(messageID snowflake.ID, opts ...rest.RequestOpt) error {
 	return e.Client().Rest.DeleteFollowupMessage(e.ApplicationID(), e.Token(), messageID, opts...)
+}
+
+// ParseSlashCommandData takes a reference to any struct, and tries to parse
+// slash command interaction data into it using reflection. By default, it will
+// try to match the struct's name in lowercase, but you can override it with
+// the following struct tag: `disgo:"my-argument"`. You can prevent fields from
+// being matched using `disgo:"-"`.
+//
+// Supports discord.ResolvedMember, discord.Member, and discord.User for
+// user arguments. Supports discord.ResolvedChannel for channels.
+// Supports other types for other argument types, including primitives.
+//
+// See the example for more details.
+func (e *CommandEvent) ParseSlashCommandData(structRef any) {
+	optparse.ParseCommandArguments(e.SlashCommandInteractionData(), structRef)
 }
